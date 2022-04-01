@@ -3,14 +3,25 @@
 #include <string.h>
 #include "db_cxx.h"
 
+const char *EXIT = "quit";
+
 int main(int argc, char** argv)
 {
     if (argc != 2)
     {
         std::cout << " Usage: " << argv[0] << " [path to a writable directory]" << std::endl;
-        return -1;
+        return EXIT_FAILURE;
     }
     const char *HOME = argv[1];
+    std::string input;
+
+    do {
+        std::cout << "SQL> ";
+        std::cin >> input;
+        std::cout << "You entered: " << input << std::endl;
+    } while(input != EXIT);
+
+    const char *home = std::getenv("HOME");
 
     // TODO: add print message with location of database environment
 
@@ -30,8 +41,5 @@ int main(int argc, char** argv)
 
     // TODO: print message for invalid sql statements
 
-    // TODO: use quit to exit
-
-    std::cout << "Hello" << std::endl;
     return EXIT_SUCCESS;
 }
