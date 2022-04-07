@@ -122,7 +122,8 @@ void handleSQLStatement(std::string query) {
         }
         delete result;
     } else { // invalid SQL
-        fprintf(stderr, "Given string is not a valid SQL query.\n");
+        // fprintf(stderr, "Given string is not a valid SQL query.\n");
+        std::cout << "Invalid SQL: " << query << std::endl;
         fprintf(stderr, "%s (L%d:%d)\n",
                 result->errorMsg(),
                 result->errorLine(),
