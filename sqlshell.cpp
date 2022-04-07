@@ -10,42 +10,50 @@
 // contains printing utilities
 #include "sqlhelper.h"
 
+#define SELECT hsql::StatementType::kStmtSelect
+#define CREATE hsql::StatementType::kStmtCreate
+
+std::string getHomeDir();
+
+void handleSQLStatement(std::string query);
+
+void printStatementInfo(const hsql::CreateStatement *statement);
+
+void printStatementInfo(const hsql::SelectStatement *statement);
+
+
 const char *EXIT = "quit";
 const unsigned int BLOCK_SZ = 4096; // block size
+const char *HOME = "cpsc5300/5300-Fossa/data"; // the db dir
+const char *EXAMPLE = "example.db"; // name of the db
 
 int main(int argc, char** argv)
 {
+    std::string home;
+
     if (argc != 2) // needs one arguement to save our db ./sql dir/to/write
     {
-        std::cout << " Usage: " << argv[0] << " [path to a writable directory]" << std::endl;
-        return EXIT_FAILURE;
+        // needs a directory dedicated for the db
+        std::cout << "Have you created a dir: ~/" << HOME  << "? (y/n) " << std::endl;
+        std::string ans;
+        std::cin >> ans;
+        if( ans[0] != 'y') {
+            std::cout << " Usage: " << argv[0] << " [path to a writable directory]" << std::endl;
+            return EXIT_FAILURE;
+        }
+        home = getHomeDir();
+    }
+    else {
+        home = argv[1];
     }
 
-    // TODO not hard code HOME
-    // const char *HOME = argv[1]; // dynamic
-    // CREATE A DIRECTORY IN YOUR HOME DIR ~/5300-Fossa/data before running this
-    const char *HOME = "cpsc5300/5300-Fossa/data"; // the db dir
-    // TODO not hard code EXAMPLE
-    const char *EXAMPLE = "example.db"; // name of the db
-
-    // needs a directory dedicated for the db
-    std::cout << "Have you created a dir: ~/" << HOME  << "? (y/n) " << std::endl;
-	std::string ans;
-	std::cin >> ans;
-	if( ans[0] != 'y') {
-        return EXIT_FAILURE;
-    }
-
-    const char *home = std::getenv("HOME"); // get parent dir of HOME
-	std::string envdir = std::string(home) + "/" + HOME; // absolute dir of HOME in the environment
-    // Print db dir
-    std::cout << envdir << std::endl;
+    std::cout << "(sql5300: running with database environment at " << home << ")" << std::endl;
 
     // creates db environment using DB_CREATE flag
     DbEnv env(0U);
 	env.set_message_stream(&std::cout);
 	env.set_error_stream(&std::cerr);
-	env.open(envdir.c_str(), DB_CREATE | DB_INIT_MPOOL, 0);
+	env.open(home.c_str(), DB_CREATE | DB_INIT_MPOOL, 0);
 
 	Db db(&env, 0);
 	db.set_message_stream(env.get_message_stream());
@@ -68,58 +76,68 @@ int main(int argc, char** argv)
 
     // Parse the SQL strings
     std::string input; // input string
-    std::cout << "SQL> "; // prompt for the first input
 
     // if input is "quit", terminate the program
-    do {
+    while(true) {
+        std::cout << "SQL> "; // prompt for the first input
         std::getline(std::cin, input);
         if (input == EXIT) { // EXIT condition
             std::cout << "Terminating the program" << std::endl;
             break;
         }
-        if (input == "") { // deals with empty inputs
-            continue;
-        }
-        std::cout << "You entered: " << input << std::endl;
-
-        hsql::SQLParserResult* result = hsql::SQLParser::parseSQLString(input);
-
-        if (result->isValid()) { // valid SQL
-            printf("Parsed successfully!\n");
-            printf("Number of statements: %lu\n", result->size());
-
-            for (uint i = 0; i < result->size(); ++i) {
-                // Print a statement summary.
-                hsql::printStatementInfo(result->getStatement(i));
-                // std::cout << i << ": " << result->getStatement(i) << std::endl;
-            }
-
-            delete result;
-        } else { // invalid SQL
-            fprintf(stderr, "Given string is not a valid SQL query.\n");
-            fprintf(stderr, "%s (L%d:%d)\n",
-                    result->errorMsg(),
-                    result->errorLine(),
-                    result->errorColumn());
-            delete result;
-        }
-        std::cout << "SQL> "; // prompt for the next input
-    } while(input != EXIT); // TODO change it to while(1)
-
-
-    // TODO: after parsing, print the message parsed
-
-    // TODO: Add support for create table
-
-    // TODO: add support to select from
-
-    // TODO: add support to join
-
-    // TODO: add support to where clause
-
-    // TODO: add support to alias
-
-    // TODO: print message for invalid sql statements
+        handleSQLStatement(input);
+    }
 
     return EXIT_SUCCESS;
+}
+
+std::string getHomeDir() {
+    const char *home = std::getenv("HOME"); // get parent dir of HOME
+	std::string envdir = std::string(home) + "/" + HOME; // absolute dir of HOME in the environment
+
+    return envdir;
+}
+
+void handleSQLStatement(std::string query) {
+    hsql::SQLParserResult* result = hsql::SQLParser::parseSQLString(query); 
+
+    if (result->isValid()) { // valid SQL
+        for (uint i = 0; i < result->size(); ++i) {
+            const hsql::SQLStatement *statement = result->getStatement(i);
+            switch(statement->type()) {
+                case SELECT:
+                    printStatementInfo((hsql::SelectStatement*)statement);
+                    break;
+                case CREATE:
+                    printStatementInfo((hsql::CreateStatement*)statement);
+                    break;
+                default:
+                    hsql::printStatementInfo(statement);
+                    break;
+            }
+        }
+        delete result;
+    } else { // invalid SQL
+        fprintf(stderr, "Given string is not a valid SQL query.\n");
+        fprintf(stderr, "%s (L%d:%d)\n",
+                result->errorMsg(),
+                result->errorLine(),
+                result->errorColumn());
+        delete result;
+    }
+}
+
+// TODO: Add support for create table
+void printStatementInfo(const hsql::CreateStatement *statement) {
+    std::cout << "create statement" << std::endl;
+    hsql::printStatementInfo(statement);
+}
+
+// TODO: add support to select from
+// TODO: add support to join
+// TODO: add support to where clause
+// TODO: add support to alias
+void printStatementInfo(const hsql::SelectStatement *statement) {
+    std::cout << "select statement" << std::endl;
+    hsql::printStatementInfo(statement);
 }
