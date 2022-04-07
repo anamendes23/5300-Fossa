@@ -30,6 +30,8 @@
 *.exe
 *.out
 *.app
+# sql5300 is probably a executable as well
+sql5300
 
-# db files
+# db files(added by Fangsheng)
 /data
