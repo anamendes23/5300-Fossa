@@ -13,6 +13,37 @@
 #define SELECT hsql::StatementType::kStmtSelect
 #define CREATE hsql::StatementType::kStmtCreate
 
+// All types of create statement
+#define CREATE_TABLE hsql::ColumnDefinition::kCreateTable;
+// #define CREATE_TABLE_FROM_TABLE hsql::ColumnDefinition::kCreateTableFromTbl;
+// #define CREATE_VIEW hsql::ColumnDefinition::kCreateView;
+// #define CREATE_INDEX hsql::ColumnDefinition::kCreateIndex;
+
+// Possible data types for each column in create statement:
+// unknown, text, int, double
+// #define UNKNOWN hsql::DataType::UNKNOWN;
+// #define TEXT hsql::DataType::TEXT;
+// #define INT hsql::DataType::INT;
+// #define DOUBLE hsql::DataType::DOUBLE;
+
+// copied from ColumnType.h
+// enum class DataType {
+//   UNKNOWN, // 0
+//   CHAR, // 1
+//   DATE, // 2
+//   DATETIME, // 3
+//   DECIMAL, // 4
+//   DOUBLE, // 5
+//   FLOAT, // 6
+//   INT, // 7
+//   LONG, //8
+//   REAL, // 9
+//   SMALLINT, // 10
+//   TEXT, // 11
+//   TIME, // 12
+//   VARCHAR, // 13
+// };
+
 std::string getHomeDir();
 
 void handleSQLStatement(std::string query);
@@ -21,14 +52,14 @@ void printStatementInfo(const hsql::CreateStatement *statement);
 
 void printStatementInfo(const hsql::SelectStatement *statement);
 
+std::string columnDefinitionToString(const hsql::ColumnDefinition *col);
 
 const char *EXIT = "quit";
 const unsigned int BLOCK_SZ = 4096; // block size
 const char *HOME = "cpsc5300/5300-Fossa/data"; // the db dir
 const char *EXAMPLE = "example.db"; // name of the db
 
-int main(int argc, char** argv)
-{
+int main(int argc, char** argv) {
     std::string home;
 
     if (argc != 2) // needs one arguement to save our db ./sql dir/to/write
@@ -104,7 +135,7 @@ std::string getHomeDir() {
 
 void handleSQLStatement(std::string query) {
     hsql::SQLParserResult* result = hsql::SQLParser::parseSQLString(query);
-
+    // TODO Use fast fail pattern here
     if (result->isValid()) { // valid SQL
         for (uint i = 0; i < result->size(); ++i) {
             const hsql::SQLStatement *statement = result->getStatement(i);
@@ -133,9 +164,34 @@ void handleSQLStatement(std::string query) {
 }
 
 // TODO: Add support for create table
+// Test SQL:
+// create table foo (a text, b integer, c double)
 void printStatementInfo(const hsql::CreateStatement *statement) {
-    std::cout << "create statement" << std::endl;
-    hsql::printStatementInfo(statement);
+    std::cout << "CREATE ";
+    // Type of CREATE
+    switch(statement->type) {
+    // case CREATE_TABLE:
+    case 0: // KTable, create table
+        std::cout << "TABLE ";
+        break;
+    default: // TODO Add support for other create types later(next milestone or next sprint)
+        std::cout << "UN-SUPPORTED TYPE ";
+        break;
+    }
+    // Table Name
+    std::cout << statement->tableName << " ";
+
+    // handle each column
+    std::cout << "(";
+    uint column_size = statement->columns->size();
+    for (uint i = 0; i < column_size; ++i) {
+        if (i != 0) {
+            std::cout << ", "; // append ','
+        }
+        std::cout << columnDefinitionToString(statement->columns->at(i));
+    }
+    std::cout << ")" << std::endl;
+    // hsql::printStatementInfo(statement);
 }
 
 // TODO: add support to select from
@@ -143,6 +199,46 @@ void printStatementInfo(const hsql::CreateStatement *statement) {
 // TODO: add support to where clause
 // TODO: add support to alias
 void printStatementInfo(const hsql::SelectStatement *statement) {
-    std::cout << "select statement" << std::endl;
+    std::cout << "col" << std::endl;
     hsql::printStatementInfo(statement);
+}
+
+// Copied from CreateStatement.h
+// enum DataType {
+//       UNKNOWN, // 0
+//       TEXT, // 1
+//       INT, // 2
+//       DOUBLE //3
+// };
+
+/**
+**
+ * Convert the hyrise ColumnDefinition AST back into the equivalent SQL
+ * @param col  column definition to unparse
+ * @return     SQL equivalent to *col
+ */
+ // create table foo (a text, b integer, c double)
+std::string columnDefinitionToString(const hsql::ColumnDefinition *col) {
+    // std::string ret(col->name);
+    std::string ret;
+    ret += col->name;
+    switch(col->type) {
+    // case DOUBLE:
+    case 3:
+        ret += " DOUBLE";
+        break;
+    // case INT:
+    case 2:
+        ret += " INT";
+        break;
+    // case TEXT:
+    case 1:
+        ret += " TEXT";
+        break;
+    default:
+        ret += " ...";
+        break;
+    }
+    return ret;
+    // return "INVALID_FUNCTION";
 }
