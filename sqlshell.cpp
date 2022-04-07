@@ -10,11 +10,17 @@
 // contains printing utilities
 #include "sqlhelper.h"
 
+#define SELECT hsql::StatementType::kStmtSelect
+#define CREATE hsql::StatementType::kStmtCreate
+
 std::string getHomeDir();
 
 void handleSQLStatement(std::string query);
 
 void printStatementInfo(const hsql::CreateStatement *statement);
+
+void printStatementInfo(const hsql::SelectStatement *statement);
+
 
 const char *EXIT = "quit";
 const unsigned int BLOCK_SZ = 4096; // block size
@@ -72,7 +78,7 @@ int main(int argc, char** argv)
     std::string input; // input string
 
     // if input is "quit", terminate the program
-    do {
+    while(true) {
         std::cout << "SQL> "; // prompt for the first input
         std::getline(std::cin, input);
         if (input == EXIT) { // EXIT condition
@@ -80,17 +86,7 @@ int main(int argc, char** argv)
             break;
         }
         handleSQLStatement(input);
-    } while(input != EXIT); // TODO change it to while(1)
-
-    // TODO: Add support for create table
-
-    // TODO: add support to select from
-
-    // TODO: add support to join
-
-    // TODO: add support to where clause
-
-    // TODO: add support to alias
+    }
 
     return EXIT_SUCCESS;
 }
@@ -109,7 +105,10 @@ void handleSQLStatement(std::string query) {
         for (uint i = 0; i < result->size(); ++i) {
             const hsql::SQLStatement *statement = result->getStatement(i);
             switch(statement->type()) {
-                case hsql::StatementType::kStmtCreate:
+                case SELECT:
+                    printStatementInfo((hsql::SelectStatement*)statement);
+                    break;
+                case CREATE:
                     printStatementInfo((hsql::CreateStatement*)statement);
                     break;
                 default:
@@ -128,7 +127,17 @@ void handleSQLStatement(std::string query) {
     }
 }
 
+// TODO: Add support for create table
 void printStatementInfo(const hsql::CreateStatement *statement) {
     std::cout << "create statement" << std::endl;
+    hsql::printStatementInfo(statement);
+}
+
+// TODO: add support to select from
+// TODO: add support to join
+// TODO: add support to where clause
+// TODO: add support to alias
+void printStatementInfo(const hsql::SelectStatement *statement) {
+    std::cout << "select statement" << std::endl;
     hsql::printStatementInfo(statement);
 }

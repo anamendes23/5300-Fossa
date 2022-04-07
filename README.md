@@ -11,7 +11,7 @@
 - [X] Use quit to exit
 - [X] Add print message with location of database environment
 - [X] Prompt user for a SQL> query
-- [ ] After parsing, print the message parsed
+- [X] After parsing, print the message parsed
 - [ ] Add support for create table
 - [ ] Add support to select from
 - [ ] Add support to join
