@@ -76,16 +76,20 @@ int main(int argc, char** argv)
 
     // Parse the SQL strings
     std::string input; // input string
+    std::cout << "SQL> "; // prompt for the first input
 
     // if input is "quit", terminate the program
     while(true) {
-        std::cout << "SQL> "; // prompt for the first input
         std::getline(std::cin, input);
+        if (input == "") {
+            continue;
+        }
         if (input == EXIT) { // EXIT condition
             std::cout << "Terminating the program" << std::endl;
             break;
         }
         handleSQLStatement(input);
+        std::cout << "SQL> "; // prompt for the next input
     }
 
     return EXIT_SUCCESS;
@@ -99,7 +103,7 @@ std::string getHomeDir() {
 }
 
 void handleSQLStatement(std::string query) {
-    hsql::SQLParserResult* result = hsql::SQLParser::parseSQLString(query); 
+    hsql::SQLParserResult* result = hsql::SQLParser::parseSQLString(query);
 
     if (result->isValid()) { // valid SQL
         for (uint i = 0; i < result->size(); ++i) {
