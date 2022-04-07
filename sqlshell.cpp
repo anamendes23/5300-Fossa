@@ -26,24 +26,6 @@
 // #define INT hsql::DataType::INT;
 // #define DOUBLE hsql::DataType::DOUBLE;
 
-// copied from ColumnType.h
-// enum class DataType {
-//   UNKNOWN, // 0
-//   CHAR, // 1
-//   DATE, // 2
-//   DATETIME, // 3
-//   DECIMAL, // 4
-//   DOUBLE, // 5
-//   FLOAT, // 6
-//   INT, // 7
-//   LONG, //8
-//   REAL, // 9
-//   SMALLINT, // 10
-//   TEXT, // 11
-//   TIME, // 12
-//   VARCHAR, // 13
-// };
-
 std::string getHomeDir();
 
 void handleSQLStatement(std::string query);
