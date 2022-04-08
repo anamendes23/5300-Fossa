@@ -12,8 +12,8 @@
 - [X] Add print message with location of database environment
 - [X] Prompt user for a SQL> query
 - [X] After parsing, print the message parsed
-- [ ] Add support for create table
-- [ ] Add support to select from
+- [X] Add support for create table
+- [X] Add support to select from
 - [ ] Add support to join
 - [ ] Add support to where clause
 - [ ] Add support to alias
