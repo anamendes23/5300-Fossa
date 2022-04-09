@@ -153,7 +153,6 @@ int main(int argc, char** argv) {
 
     // Parse the SQL strings
     std::string input; // input string
-    std::cout << "SQL> "; // prompt for the first input
 
     // if input is "quit", terminate the program
     while(true) {
@@ -175,32 +174,30 @@ int main(int argc, char** argv) {
 
 void handleSQLStatement(std::string query) {
     hsql::SQLParserResult* result = hsql::SQLParser::parseSQLString(query);
-    // TODO Use fast fail pattern here
-    if (result->isValid()) { // valid SQL
-        for (uint i = 0; i < result->size(); ++i) {
-            const hsql::SQLStatement *statement = result->getStatement(i);
-            switch(statement->type()) {
-                case SELECT:
-                    printStatementInfo((const hsql::SelectStatement*)statement);
-                    break;
-                case CREATE:
-                    printStatementInfo((const hsql::CreateStatement*)statement);
-                    break;
-                default:
-                    hsql::printStatementInfo(statement);
-                    break;
-            }
-        }
-        delete result;
-    } else { // invalid SQL
-        // fprintf(stderr, "Given string is not a valid SQL query.\n");
+    if (!result->isValid()) { // invalid SQL
         std::cout << "Invalid SQL: " << query << std::endl;
         fprintf(stderr, "%s (L%d:%d)\n",
                 result->errorMsg(),
                 result->errorLine(),
                 result->errorColumn());
         delete result;
+        return;
     }
+    for (uint i = 0; i < result->size(); ++i) {
+        const hsql::SQLStatement *statement = result->getStatement(i);
+        switch(statement->type()) {
+            case SELECT:
+                printStatementInfo((const hsql::SelectStatement*)statement);
+                break;
+            case CREATE:
+                printStatementInfo((const hsql::CreateStatement*)statement);
+                break;
+            default:
+                hsql::printStatementInfo(statement);
+                break;
+        }
+    }
+    delete result;
 }
 
 void printStatementInfo(const hsql::CreateStatement *statement) {
@@ -211,7 +208,8 @@ void printStatementInfo(const hsql::CreateStatement *statement) {
     case 0: // KTable, create table
         std::cout << "TABLE ";
         break;
-    default: // TODO Add support for other create types later(next milestone or next sprint)
+    // TODO Add support for other create types later(next milestone or next sprint)
+    default:
         std::cout << "UN-SUPPORTED TYPE ";
         break;
     }
