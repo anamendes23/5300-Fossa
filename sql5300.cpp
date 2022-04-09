@@ -32,10 +32,22 @@
 // #define INT hsql::DataType::INT;
 // #define DOUBLE hsql::DataType::DOUBLE;
 
+/**
+ * Parses the query inputed by user.
+ * @param query to be parsed
+ */
 void handleSQLStatement(std::string query);
 
+/**
+ * Parses SQL statement and prints its query.
+ * @param statement to be parsed
+ */
 void printStatementInfo(const hsql::CreateStatement *statement);
 
+/**
+ * Parses SQL statement and prints its query.
+ * @param statement to be parsed
+ */
 void printStatementInfo(const hsql::SelectStatement *statement);
 
 /**
@@ -45,16 +57,46 @@ void printStatementInfo(const hsql::SelectStatement *statement);
  */
 std::string columnDefinitionToString(const hsql::ColumnDefinition *col);
 
+/**
+ * Builds a formatted string with the select statement expressions
+ * @param selectList list of expressions in select statement
+ * @return a string with the select statement
+ */
 std::string getSelectList(std::vector<hsql::Expr*>* selectList);
 
+/**
+ * Builds a formatted string with the table references
+ * @param fromTable reference for a select statement
+ * @return a string with the table reference
+ */
 std::string getFromTable(hsql::TableRef* fromTable);
 
+/**
+ * Builds a formatted string with the from clause JOIN type
+ * @param type of join
+ * @return a string with the join type
+ */
 std::string getJoinType(hsql::JoinType type);
 
+/**
+ * Builds a formatted string for the expression type
+ * @param expr expression
+ * @return a string with the query expression
+ */
 std::string getExpression(hsql::Expr* expr);
 
+/**
+ * Builds a formatted string with the where clause components
+ * @param whereClause for a select statement
+ * @return a string with the where clause
+ */
 std::string getWhereClause(hsql::Expr* whereClause);
 
+/**
+ * Builds a formatted string with the group by clause components
+ * @param groupBy clause for a select statement
+ * @return a string with the group by clause
+ */
 std::string getGroupBy(hsql::GroupByDescription* groupBy);
 
 const char *EXIT = "quit";
