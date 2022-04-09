@@ -14,7 +14,7 @@
 - [X] After parsing, print the message parsed
 - [X] Add support for create table
 - [X] Add support to select from
-- [ ] Add support to join
+- [X] Add support to join
 - [ ] Add support to where clause
-- [ ] Add support to alias
+- [X] Add support to alias
 - [X] Print message for invalid sql statements

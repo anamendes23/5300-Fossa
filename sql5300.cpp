@@ -257,7 +257,7 @@ std::string getFromTable(hsql::TableRef* fromTable) {
 
     switch(fromTable->type) {
         case hsql::TableRefType::kTableName:
-            if (fromTable->schema) {
+            if(fromTable->schema) {
                 output.append(fromTable->schema);
                 output.append(".");
             }
@@ -269,6 +269,7 @@ std::string getFromTable(hsql::TableRef* fromTable) {
             // name of table on the right
             output.append(getJoinType(fromTable->join->type));
             output.append(getFromTable(fromTable->join->right));
+            output.append("ON ");
             output.append(getExpression(fromTable->join->condition));
             break;
         case hsql::TableRefType::kTableCrossProduct:
@@ -279,6 +280,11 @@ std::string getFromTable(hsql::TableRef* fromTable) {
         default:
             std::cerr << "Table type " << fromTable->type << " not found." << std::endl;
             return output;
+    }
+
+    if(fromTable->alias != nullptr) {
+        output.append(" AS ");
+        output.append(fromTable->alias);
     }
 
     output.append(" ");
@@ -345,6 +351,7 @@ std::string getExpression(hsql::Expr* expr) {
                 output.append("null ");
             }
             else {
+                output.append(getExpression(expr->expr));
                 output.append(getOperator(expr->opType));
                 output.append(" ");
                 if(expr->expr2 != nullptr) {
@@ -363,6 +370,10 @@ std::string getExpression(hsql::Expr* expr) {
         default:
             std::cerr << "Expression type " << expr->type << " not found." << std::endl;
             return output;
+    }
+
+    if(expr->alias != nullptr) {
+        output.append(expr->alias);
     }
 
     return output;
@@ -384,7 +395,7 @@ std::string getOperator(OPTYPE opType) {
             std::cout << "CASE" << std::endl;
             break;
         case OPTYPE::SIMPLE_OP:
-            output.append("=");
+            output.append(" =");
             break;
         case OPTYPE::NOT_EQUALS:
             std::cout << "NOT_EQUALS" << std::endl;
