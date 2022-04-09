@@ -19,19 +19,6 @@
 #define CREATE hsql::StatementType::kStmtCreate
 #define OPTYPE hsql::Expr::OperatorType
 
-// All types of create statement
-#define CREATE_TABLE hsql::ColumnDefinition::kCreateTable;
-// #define CREATE_TABLE_FROM_TABLE hsql::ColumnDefinition::kCreateTableFromTbl;
-// #define CREATE_VIEW hsql::ColumnDefinition::kCreateView;
-// #define CREATE_INDEX hsql::ColumnDefinition::kCreateIndex;
-
-// Possible data types for each column in create statement:
-// unknown, text, int, double
-// #define UNKNOWN hsql::DataType::UNKNOWN;
-// #define TEXT hsql::DataType::TEXT;
-// #define INT hsql::DataType::INT;
-// #define DOUBLE hsql::DataType::DOUBLE;
-
 /**
  * Parses the query inputed by user.
  * @param query to be parsed
@@ -202,16 +189,23 @@ void handleSQLStatement(std::string query) {
 
 void printStatementInfo(const hsql::CreateStatement *statement) {
     std::cout << "CREATE ";
-    // Type of CREATE
+    // Handle each type of CREATE
     switch(statement->type) {
-    // case CREATE_TABLE:
-    case 0: // KTable, create table
-        std::cout << "TABLE ";
-        break;
-    // TODO Add support for other create types later(next milestone or next sprint)
-    default:
-        std::cout << "UN-SUPPORTED TYPE ";
-        break;
+        case hsql::CreateStatement::kTable: // Create Table
+            std::cout << "TABLE ";
+            break;
+        case hsql::CreateStatement::kTableFromTbl: // Hyrise file format
+            std::cout << "TABLE FROM Hyrise File Format ";
+            break;
+        case hsql::CreateStatement::kView: // Create View
+            std::cout << "VIEW ";
+            break;
+        case hsql::CreateStatement::kIndex: // Create Index
+            std::cout << "INDEX ";
+            break;
+        default:
+            std::cout << "UN-SUPPORTED CREATE TYPE ";
+            break;
     }
     // Table Name
     std::cout << statement->tableName << " ";
@@ -241,28 +235,23 @@ void printStatementInfo(const hsql::SelectStatement *statement) {
 }
 
 std::string columnDefinitionToString(const hsql::ColumnDefinition *col) {
-    // std::string ret(col->name);
     std::string ret;
     ret += col->name;
     switch(col->type) {
-    // case DOUBLE:
-    case 3:
-        ret += " DOUBLE";
-        break;
-    // case INT:
-    case 2:
-        ret += " INT";
-        break;
-    // case TEXT:
-    case 1:
-        ret += " TEXT";
-        break;
-    default:
-        ret += " ...";
-        break;
+        case hsql::ColumnDefinition::DOUBLE:
+            ret += " DOUBLE";
+            break;
+        case hsql::ColumnDefinition::INT:
+            ret += " INT";
+            break;
+        case hsql::ColumnDefinition::TEXT:
+            ret += " TEXT";
+            break;
+        default:
+            ret += " ...";
+            break;
     }
     return ret;
-    // return "INVALID_FUNCTION";
 }
 
 std::string getSelectList(std::vector<hsql::Expr*>* selectList) {
