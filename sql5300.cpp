@@ -170,6 +170,7 @@ void handleSQLStatement(std::string query) {
         delete result;
         return;
     }
+    // Valid SQL
     for (uint i = 0; i < result->size(); ++i) {
         const hsql::SQLStatement *statement = result->getStatement(i);
         switch(statement->type()) {
@@ -257,7 +258,8 @@ std::string columnDefinitionToString(const hsql::ColumnDefinition *col) {
 std::string getSelectList(std::vector<hsql::Expr*>* selectList) {
     std::string output = "SELECT ";
 
-    for(int i = 0; i < selectList->size(); i++) {
+    // i's data type changed from int to long unsigned int bc previous warning from the compiler
+    for(long unsigned int i = 0; i < selectList->size(); i++) {
         output.append(getExpression(selectList->at(i)));
         if(i < (selectList->size() - 1)) {
             output.append(", ");
