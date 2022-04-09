@@ -1,13 +1,18 @@
+/*
+ * CPSC 5300 - Physica DB Design and Optmiziation, Seattle University
+ * Professor Kevin Lundeen
+ * Ana Carolina de Souza Mendes, MSCS
+ * Fangsheng Xu, MSCS
+ * This is free and unencumbered software released into the public domain.
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "db_cxx.h"
 #include <string>
 #include <sys/types.h>
-
-// include the sql parser
 #include "SQLParser.h"
-// contains printing utilities
 #include "sqlhelper.h"
 
 #define SELECT hsql::StatementType::kStmtSelect
@@ -27,14 +32,17 @@
 // #define INT hsql::DataType::INT;
 // #define DOUBLE hsql::DataType::DOUBLE;
 
-std::string getHomeDir();
-
 void handleSQLStatement(std::string query);
 
 void printStatementInfo(const hsql::CreateStatement *statement);
 
 void printStatementInfo(const hsql::SelectStatement *statement);
 
+/**
+ * Convert the hyrise ColumnDefinition AST back into the equivalent SQL
+ * @param col  column definition to unparse
+ * @return     SQL equivalent to *col
+ */
 std::string columnDefinitionToString(const hsql::ColumnDefinition *col);
 
 std::string getSelectList(std::vector<hsql::Expr*>* selectList);
@@ -44,8 +52,6 @@ std::string getFromTable(hsql::TableRef* fromTable);
 std::string getJoinType(hsql::JoinType type);
 
 std::string getExpression(hsql::Expr* expr);
-
-std::string getOperator(OPTYPE opType);
 
 std::string getWhereClause(hsql::Expr* whereClause);
 
@@ -69,7 +75,8 @@ int main(int argc, char** argv) {
             std::cout << " Usage: " << argv[0] << " [path to a writable directory]" << std::endl;
             return EXIT_FAILURE;
         }
-        home = getHomeDir();
+        const char *dir = std::getenv("HOME"); // get parent dir of HOME
+	    home = std::string(dir) + "/" + HOME; // absolute dir of HOME in the environment
     }
     else {
         home = argv[1];
@@ -99,8 +106,8 @@ int main(int argc, char** argv) {
 
 	Dbt rdata;
 	db.get(NULL, &key, &rdata, 0); // read block #1 from the database
-	std::cout << "Read (block #" << block_number << "): '" << (char *)rdata.get_data() << "'";
-	std::cout << " (expect 'hello!')" << std::endl;
+	// std::cout << "Read (block #" << block_number << "): '" << (char *)rdata.get_data() << "'";
+	// std::cout << " (expect 'hello!')" << std::endl;
 
     // Parse the SQL strings
     std::string input; // input string
@@ -122,13 +129,6 @@ int main(int argc, char** argv) {
     }
 
     return EXIT_SUCCESS;
-}
-
-std::string getHomeDir() {
-    const char *home = std::getenv("HOME"); // get parent dir of HOME
-	std::string envdir = std::string(home) + "/" + HOME; // absolute dir of HOME in the environment
-
-    return envdir;
 }
 
 void handleSQLStatement(std::string query) {
@@ -161,9 +161,6 @@ void handleSQLStatement(std::string query) {
     }
 }
 
-// TODO: Add support for create table
-// Test SQL:
-// create table foo (a text, b integer, c double)
 void printStatementInfo(const hsql::CreateStatement *statement) {
     std::cout << "CREATE ";
     // Type of CREATE
@@ -191,9 +188,6 @@ void printStatementInfo(const hsql::CreateStatement *statement) {
     std::cout << ")" << std::endl;
 }
 
-// TODO: add support to join
-// TODO: add support to where clause
-// TODO: add support to alias
 void printStatementInfo(const hsql::SelectStatement *statement) {
     std::string selectStatement = "";
 
@@ -206,13 +200,6 @@ void printStatementInfo(const hsql::SelectStatement *statement) {
     std::cout << selectStatement << std::endl;
 }
 
-/**
-**
- * Convert the hyrise ColumnDefinition AST back into the equivalent SQL
- * @param col  column definition to unparse
- * @return     SQL equivalent to *col
- */
- // create table foo (a text, b integer, c double)
 std::string columnDefinitionToString(const hsql::ColumnDefinition *col) {
     // std::string ret(col->name);
     std::string ret;
@@ -269,12 +256,15 @@ std::string getFromTable(hsql::TableRef* fromTable) {
             // name of table on the right
             output.append(getJoinType(fromTable->join->type));
             output.append(getFromTable(fromTable->join->right));
-            output.append("ON ");
+            output.append(" ON ");
             output.append(getExpression(fromTable->join->condition));
             break;
         case hsql::TableRefType::kTableCrossProduct:
-            for (hsql::TableRef* table : *fromTable->list) {
-                output.append(getFromTable(table));
+            for(int i = (fromTable->list->size() - 1); i >= 0; i--) {
+                output.append(getFromTable(fromTable->list->at(i)));
+                if(i > 0) {
+                    output.append(", ");
+                }
             }
             break;
         default:
@@ -287,44 +277,42 @@ std::string getFromTable(hsql::TableRef* fromTable) {
         output.append(fromTable->alias);
     }
 
-    output.append(" ");
-
     return output;
 }
 
 std::string getJoinType(hsql::JoinType type) {
-    if(!type) return "";
+    if(!type) return " JOIN ";
 
     std::string output = "";
 
     switch(type) {
         case hsql::JoinType::kJoinInner:
-            output.append("INNER JOIN ");
+            output.append(" INNER JOIN ");
             break;
         case hsql::JoinType::kJoinOuter:
-            output.append("OUTER JOIN ");
+            output.append(" OUTER JOIN ");
             break;
         case hsql::JoinType::kJoinLeft:
-            output.append("LEFT JOIN ");
+            output.append(" LEFT JOIN ");
             break;
         case hsql::JoinType::kJoinRight:
-            output.append("RIGHT JOIN ");
+            output.append(" RIGHT JOIN ");
             break;
         case hsql::JoinType::kJoinLeftOuter:
-            output.append("LEFT OUTER JOIN ");
+            output.append(" LEFT OUTER JOIN ");
             break;
         case hsql::JoinType::kJoinRightOuter:
-            output.append("RIGHT OUTER JOIN ");
+            output.append(" RIGHT OUTER JOIN ");
             break;
         case hsql::JoinType::kJoinCross:
-            output.append("CROSS JOIN ");
+            output.append(" CROSS JOIN ");
             break;
         case hsql::JoinType::kJoinNatural:
-            output.append("NATURAL JOIN ");
+            output.append(" NATURAL JOIN ");
             break;
         default:
-            output.append("JOIN ");
-            break;
+            std::cerr << "Join type " << type << " not found." << std::endl;
+            return output;
     }
 
     return output;
@@ -339,6 +327,9 @@ std::string getExpression(hsql::Expr* expr) {
         case hsql::ExprType::kExprStar:
             output.append("*");
             break;
+        case hsql::ExprType::kExprLiteralInt:
+            output.append(std::to_string(expr->ival));
+            break;
         case hsql::ExprType::kExprColumnRef:
             if(expr->table) {
                 output.append(expr->table);
@@ -352,7 +343,8 @@ std::string getExpression(hsql::Expr* expr) {
             }
             else {
                 output.append(getExpression(expr->expr));
-                output.append(getOperator(expr->opType));
+                output.append(" ");
+                output += expr->opChar;
                 output.append(" ");
                 if(expr->expr2 != nullptr) {
                     output.append(getExpression(expr->expr2));
@@ -379,72 +371,17 @@ std::string getExpression(hsql::Expr* expr) {
     return output;
 }
 
-std::string getOperator(OPTYPE opType) {
-    if(!opType) return "";
+std::string getWhereClause(hsql::Expr* whereClause) {
+    if(!whereClause) return "";
 
-    std::string output = "";
-
-    switch(opType) {
-        case OPTYPE::NONE:
-            std::cout << "NONE" << std::endl;
-            break;
-        case OPTYPE::BETWEEN:
-            std::cout << "BETWEEN" << std::endl;
-            break;
-        case OPTYPE::CASE:
-            std::cout << "CASE" << std::endl;
-            break;
-        case OPTYPE::SIMPLE_OP:
-            output.append(" =");
-            break;
-        case OPTYPE::NOT_EQUALS:
-            std::cout << "NOT_EQUALS" << std::endl;
-            break;
-        case OPTYPE::LESS_EQ:
-            std::cout << "LESS_EQ" << std::endl;
-            break;
-        case OPTYPE::GREATER_EQ:
-            std::cout << "GREATER_EQ" << std::endl;
-            break;
-        case OPTYPE::LIKE:
-            std::cout << "LIKE" << std::endl;
-            break;
-        case OPTYPE::NOT_LIKE:
-            std::cout << "NOT_LIKE" << std::endl;
-            break;
-        case OPTYPE::AND:
-            std::cout << "AND" << std::endl;
-            break;
-        case OPTYPE::OR:
-            std::cout << "OR" << std::endl;
-            break;
-        case OPTYPE::IN:
-            std::cout << "IN" << std::endl;
-            break;
-        case OPTYPE::NOT:
-            std::cout << "NOT" << std::endl;
-            break;
-        case OPTYPE::UMINUS:
-            std::cout << "UMINUS" << std::endl;
-            break;
-        case OPTYPE::ISNULL:
-            std::cout << "ISNULL" << std::endl;
-            break;
-        case OPTYPE::EXISTS:
-            std::cout << "EXISTS" << std::endl;
-            break;
-        default:
-            std::cerr << "Operator type " << opType << " not found." << std::endl;
-            return output;
-    }
+    std::string output = " WHERE ";
+    output.append(getExpression(whereClause));
 
     return output;
-};
-
-std::string getWhereClause(hsql::Expr* whereClause) {
-    return "where clause";
 }
 
 std::string getGroupBy(hsql::GroupByDescription* groupBy) {
-    return "group by";
+    if(!groupBy) return "";
+
+    return "Group by not implemented";
 }
