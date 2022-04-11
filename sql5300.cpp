@@ -15,9 +15,22 @@
 #include "SQLParser.h"
 #include "sqlhelper.h"
 
+// Milesstone2
+#include "heap_storage.h"
+
+// Milestone2
+// using namespace std;
+// using namespace hsql;
+
 #define SELECT hsql::StatementType::kStmtSelect
 #define CREATE hsql::StatementType::kStmtCreate
 #define OPTYPE hsql::Expr::OperatorType
+
+/*
+ * we allocate and initialize the _DB_ENV global
+ * Professor added it
+ */
+DbEnv *_DB_ENV;
 
 /**
  * Parses the query inputed by user.
@@ -113,30 +126,17 @@ int main(int argc, char** argv) {
 
     std::cout << "(sql5300: running with database environment at " << home << ")" << std::endl;
 
-    // creates db environment using DB_CREATE flag
     DbEnv env(0U);
-	env.set_message_stream(&std::cout);
-	env.set_error_stream(&std::cerr);
-	env.open(home.c_str(), DB_CREATE | DB_INIT_MPOOL, 0);
-
-	Db db(&env, 0);
-	db.set_message_stream(env.get_message_stream());
-	db.set_error_stream(env.get_error_stream());
-	db.set_re_len(BLOCK_SZ); // Set record length to 4K
-	db.open(NULL, EXAMPLE, NULL, DB_RECNO, DB_CREATE | DB_TRUNCATE, 0644); // Erases anything already there
-
-	char block[BLOCK_SZ];
-	Dbt data(block, sizeof(block));
-	int block_number;
-	Dbt key(&block_number, sizeof(block_number));
-	block_number = 1;
-	strcpy(block, "hello!");
-	db.put(NULL, &key, &data, 0);  // write block #1 to the database
-
-	Dbt rdata;
-	db.get(NULL, &key, &rdata, 0); // read block #1 from the database
-	// std::cout << "Read (block #" << block_number << "): '" << (char *)rdata.get_data() << "'";
-	// std::cout << " (expect 'hello!')" << std::endl;
+    env.set_message_stream(&std::cout);
+    env.set_error_stream(&std::cerr);
+    try {
+        // env.open(home, DB_CREATE | DB_INIT_MPOOL, 0);
+        env.open(home.c_str(), DB_CREATE | DB_INIT_MPOOL, 0);
+    } catch (DbException &exc) {
+        cerr << "(sql5300: " << exc.what() << ")";
+        exit(1);
+    }
+    _DB_ENV = &env;
 
     // Parse the SQL strings
     std::string input; // input string
@@ -152,6 +152,12 @@ int main(int argc, char** argv) {
             std::cout << "Terminating the program" << std::endl;
             break;
         }
+        // Naive Test
+        if (input == "test") {
+            cout << "test_heap_storage: " << (test_heap_storage() ? "ok" : "failed") << endl;
+            continue;
+        }
+
         handleSQLStatement(input);
         std::cout << "SQL> "; // prompt for the next input
     }
