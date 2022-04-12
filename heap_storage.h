@@ -9,8 +9,16 @@
  */
 #pragma once
 
+// added these to support std::memcpy
+#include <stdio.h>
+#include <stdlib.h>
+#include<cstring>
+
+// comes with milestone starter files
 #include "db_cxx.h"
 #include "storage_engine.h"
+
+using namespace std;
 
 /**
  * @class SlottedPage - heap file implementation of DbBlock.
