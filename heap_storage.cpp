@@ -4,18 +4,10 @@
 */
 bool test_heap_storage();
 
-/*
- * Convenient aliases for types
- */
- // Copied them from storage_engine.h
-typedef u_int16_t RecordID;
-typedef u_int32_t BlockID;
-typedef std::vector<RecordID> RecordIDs;
-typedef std::length_error DbBlockNoRoomError;
-
 // copied from instructor's code
 typedef u_int16_t u16;
 
+/* -------------SlotttedPage::DbBlock-------------*/
 SlottedPage::SlottedPage(Dbt &block, BlockID block_id, bool is_new) : DbBlock(block, block_id) {
     if (is_new) {
         this->num_records = 0;
@@ -30,7 +22,7 @@ SlottedPage::SlottedPage(Dbt &block, BlockID block_id, bool is_new) : DbBlock(bl
 // SlottedPage::~SlottedPage() {
 // }
 
-RecordID SlottedPage:: add(const Dbt* data) {
+RecordID SlottedPage::add(const Dbt* data) {
     if (!has_room(data->get_size()))
         throw DbBlockNoRoomError("not enough room for new record");
     u16 id = ++this->num_records;
@@ -101,44 +93,175 @@ void* SlottedPage::address(u16 offset) {
     return (void*)((char*)this->block.get_data() + offset);
 }
 
-// test function -- returns true if all tests pass
+/* -------------HeapFile::DbFile-------------*/
+// public
+// HeapFile::HeapFile(std::string name){} // re-definittion
+
+void HeapFile::create(void) {
+
+}
+
+void HeapFile::drop(void) {
+
+}
+
+void HeapFile::open(void) {
+
+}
+
+void HeapFile::close(void) {
+
+}
+
+SlottedPage* HeapFile::get_new(void) {
+    return 0;
+}
+
+SlottedPage* HeapFile::get(BlockID block_id){
+    return 0;
+}
+
+void HeapFile::put(DbBlock *block) {
+
+}
+
+BlockIDs* HeapFile::block_ids() {
+    return 0;
+}
+
+// don't need re-definition
+// u_int32_t HeapFile::get_last_block_id() {
+//     return last;
+// }
+
+// protected
+void HeapFile::db_open(uint flags) {
+
+}
+
+/* -------------HeapTable::DbRelation-------------*/
+
+// More type aliases
+typedef std::string Identifier;
+typedef std::vector<Identifier> ColumnNames;
+typedef std::vector<ColumnAttribute> ColumnAttributes;
+typedef std::pair<BlockID, RecordID> Handle;
+typedef std::vector<Handle> Handles;  // FIXME: will need to turn this into an iterator at some point
+typedef std::map<Identifier, Value> ValueDict;
+
+// Public
+
+// HeapTable::HeapTable(Identifier table_name, ColumnNames column_names, ColumnAttributes column_attributes) {
+
+// }
+
+void HeapTable::create() {
+
+}
+
+void HeapTable::create_if_not_exists() {
+
+}
+
+void HeapTable::drop() {
+
+}
+
+void HeapTable::open() {
+
+}
+
+void HeapTable::close() {
+
+}
+
+Handle HeapTable::insert(const ValueDict *row) {
+    return std::pair<unsigned int, short unsigned int>(0,0);
+}
+
+void HeapTable::update(const Handle handle, const ValueDict *new_values) {
+
+}
+
+void HeapTable::del(const Handle handle) {
+
+}
+
+Handles* HeapTable::select() {
+    return nullptr;
+}
+
+Handles* HeapTable::select(const ValueDict* where) {
+    Handles* handles = new Handles();
+    BlockIDs* block_ids = file.block_ids();
+    for (auto const& block_id: *block_ids) {
+        SlottedPage* block = file.get(block_id);
+        RecordIDs* record_ids = block->ids();
+        for (auto const& record_id: *record_ids)
+            handles->push_back(Handle(block_id, record_id));
+        delete record_ids;
+        delete block;
+    }
+    delete block_ids;
+    return handles;
+}
+
+ValueDict* HeapTable::project(Handle handle) {
+    return nullptr;
+}
+
+ValueDict* HeapTable::project(Handle handle, const ColumnNames *column_names) {
+    return nullptr;
+}
+
+// protected
+ValueDict* HeapTable::validate(const ValueDict *row) {
+    return nullptr;
+}
+
+Handle HeapTable::append(const ValueDict *row) {
+    return std::pair<unsigned int, short unsigned int>(0,0);
+}
+
+// return the bits to go into the file
+// caller responsible for freeing the returned Dbt and its enclosed ret->get_data().
+Dbt* HeapTable::marshal(const ValueDict* row) {
+    char *bytes = new char[DbBlock::BLOCK_SZ]; // more than we need (we insist that one row fits into DbBlock::BLOCK_SZ)
+    uint offset = 0;
+    uint col_num = 0;
+    for (auto const& column_name: this->column_names) {
+        ColumnAttribute ca = this->column_attributes[col_num++];
+        ValueDict::const_iterator column = row->find(column_name);
+        Value value = column->second;
+        if (ca.get_data_type() == ColumnAttribute::DataType::INT) {
+            *(int32_t*) (bytes + offset) = value.n;
+            offset += sizeof(int32_t);
+        } else if (ca.get_data_type() == ColumnAttribute::DataType::TEXT) {
+            uint size = value.s.length();
+            *(u16*) (bytes + offset) = size;
+            offset += sizeof(u16);
+            memcpy(bytes+offset, value.s.c_str(), size); // assume ascii for now
+            offset += size;
+        } else {
+            throw DbRelationError("Only know how to marshal INT and TEXT");
+        }
+    }
+    char *right_size_bytes = new char[offset];
+    memcpy(right_size_bytes, bytes, offset);
+    delete[] bytes;
+    Dbt *data = new Dbt(right_size_bytes, offset);
+    return data;
+}
+
+ValueDict* HeapTable::unmarshal(Dbt *data) {
+    return nullptr;
+}
+
+
+/* -------------Naive Test-------------*/
 bool test_heap_storage() {
-	ColumnNames column_names;
-	column_names.push_back("a");
-	column_names.push_back("b");
-	ColumnAttributes column_attributes;
-	ColumnAttribute ca(ColumnAttribute::INT);
-	column_attributes.push_back(ca);
-	ca.set_data_type(ColumnAttribute::TEXT);
-	column_attributes.push_back(ca);
-    HeapTable table1("_test_create_drop_cpp", column_names, column_attributes);
-    table1.create();
-    std::cout << "create ok" << std::endl;
-    table1.drop();  // drop makes the object unusable because of BerkeleyDB restriction -- maybe want to fix this some day
-    std::cout << "drop ok" << std::endl;
-
-    HeapTable table("_test_data_cpp", column_names, column_attributes);
-    table.create_if_not_exists();
-    std::cout << "create_if_not_exsts ok" << std::endl;
-
-    ValueDict row;
-    row["a"] = Value(12);
-    row["b"] = Value("Hello!");
-    std::cout << "try insert" << std::endl;
-    table.insert(&row);
-    std::cout << "insert ok" << std::endl;
-    Handles* handles = table.select();
-    std::cout << "select ok " << handles->size() << std::endl;
-    ValueDict *result = table.project((*handles)[0]);
-    std::cout << "project ok" << std::endl;
-    Value value = (*result)["a"];
-    if (value.n != 12)
-    	return false;
-    value = (*result)["b"];
-    if (value.s != "Hello!")
-		return false;
-    table.drop();
-
     return true;
 }
+
+
 
