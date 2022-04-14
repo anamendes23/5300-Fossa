@@ -3,7 +3,44 @@
 /*
 * Naive Test from Kevin
 */
-bool test_heap_storage();
+bool test_heap_storage() {
+    ColumnNames column_names;
+    column_names.push_back("a");
+    column_names.push_back("b");
+    ColumnAttributes column_attributes;
+    ColumnAttribute ca(ColumnAttribute::INT);
+    column_attributes.push_back(ca);
+    ca.set_data_type(ColumnAttribute::TEXT);
+    column_attributes.push_back(ca);
+    HeapTable table1("_test_create_drop_cpp", column_names, column_attributes);
+    return table1.test_unmarshal();
+    // table1.create();
+    // std::cout << "create ok" << std::endl;
+    // table1.drop();  // drop makes the object unusable because of BerkeleyDB 
+    //                 //restriction -- maybe want to fix this some day
+    // std::cout << "drop ok" << std::endl;
+    // HeapTable table("_test_data_cpp", column_names, column_attributes);
+    // table.create_if_not_exists();
+    // std::cout << "create_if_not_exsts ok" << std::endl;
+    // ValueDict row;
+    // row["a"] = Value(12);
+    // row["b"] = Value("Hello!");
+    // std::cout << "try insert" << std::endl;
+    // table.insert(&row);
+    // std::cout << "insert ok" << std::endl;
+    // Handles* handles = table.select();
+    // std::cout << "select ok " << handles->size() << std::endl;
+    // ValueDict *result = table.project((*handles)[0]);
+    // std::cout << "project ok" << std::endl;
+    // Value value = (*result)["a"];
+    // if (value.n != 12)
+    //     return false;
+    // value = (*result)["b"];
+    // if (value.s != "Hello!")
+    //     return false;
+    // table.drop();
+    // return true;
+}
 
 // copied from instructor's code
 typedef u_int16_t u16;
@@ -209,7 +246,7 @@ void HeapTable::create() {
     try {
         file.create();
     }
-    catch (std::exception e) {
+    catch (DbRelationError e) {
         std::cerr << e.what() << std::endl;
     }
 }
@@ -223,7 +260,7 @@ void HeapTable::create_if_not_exists() {
     try {
         file.open();
     }
-    catch (std::exception e) { // bdb.DBNoSuckFileError
+    catch (DbRelationError e) { // bdb.DBNoSuckFileError
         file.create();
     }
 }
@@ -357,7 +394,7 @@ Dbt* HeapTable::marshal(const ValueDict* row) {
     char *bytes = new char[DbBlock::BLOCK_SZ]; // more than we need (we insist that one row fits into DbBlock::BLOCK_SZ)
     uint offset = 0;
     uint col_num = 0;
-    for (auto const& column_name: this->column_names) {
+    for (auto const& column_name : this->column_names) {
         ColumnAttribute ca = this->column_attributes[col_num++];
         ValueDict::const_iterator column = row->find(column_name);
         Value value = column->second;
@@ -382,20 +419,43 @@ Dbt* HeapTable::marshal(const ValueDict* row) {
 }
 
 ValueDict* HeapTable::unmarshal(Dbt *data) {
+    ValueDict *row = new ValueDict;
     char *output_data = (char *)data->get_data();
-    // data will be in the same order as the colum name
-    // loop through and for each column, get its data type
-    // to know how many bytes to convert back and to what
-    // add that to a row[column_name] = converted_data
-    // also need to keep track of the offset
-    
-    return nullptr;
+    uint offset = 0;
+    uint col_num = 0;
+    for (auto const& column_name : this->column_names) {
+        ColumnAttribute ca = this->column_attributes[col_num++];
+        if (ca.get_data_type() == ColumnAttribute::DataType::INT) {
+            int32_t n;
+            memcpy( &n, (output_data + offset), sizeof(int32_t));
+            Value val(n);
+            row->insert(std::pair<Identifier, Value>(column_name, val));
+            offset += sizeof(int32_t);
+        } else if (ca.get_data_type() == ColumnAttribute::DataType::TEXT) {
+            u16 size = *(u16 *)(output_data + offset); // size is in the first byte
+            offset += sizeof(u16);
+            std::string s(output_data + offset, size);
+            Value val(s);
+            row->insert(std::pair<Identifier, Value>(column_name, val));
+            offset += size;
+        } else {
+            throw DbRelationError("Only know how to unmarshal INT and TEXT");
+        }
+    }
+    return row;
 }
 
-/* -------------Naive Test-------------*/
-bool test_heap_storage() {
+bool HeapTable::test_unmarshal() {
+    ValueDict row;
+    row["a"] = Value(12);
+    row["b"] = Value("Hello!");
+    Dbt *data = marshal(&row);
+    ValueDict *result = unmarshal(data);
+    Value value = (*result)["a"];
+    if (value.n != 12)
+        return false;
+    value = (*result)["b"];
+    if (value.s != "Hello!")
+        return false;
     return true;
 }
-
-
-

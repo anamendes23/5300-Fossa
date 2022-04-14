@@ -171,6 +171,7 @@ public:
 
     virtual ValueDict *project(Handle handle, const ColumnNames *column_names);
 
+    virtual bool test_unmarshal();
 protected:
     HeapFile file;
 

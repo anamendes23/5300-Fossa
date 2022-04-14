@@ -134,6 +134,7 @@ int main(int argc, char** argv) {
         env.open(home.c_str(), DB_CREATE | DB_INIT_MPOOL, 0);
     } catch (DbException &exc) {
         std::cerr << "(sql5300: " << exc.what() << ")";
+        env.close(0);
         exit(1);
     }
     _DB_ENV = &env;
