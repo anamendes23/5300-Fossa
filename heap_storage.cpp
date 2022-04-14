@@ -16,7 +16,7 @@ bool test_heap_storage() {
     return table1.test_unmarshal();
     // table1.create();
     // std::cout << "create ok" << std::endl;
-    // table1.drop();  // drop makes the object unusable because of BerkeleyDB 
+    // table1.drop();  // drop makes the object unusable because of BerkeleyDB
     //                 //restriction -- maybe want to fix this some day
     // std::cout << "drop ok" << std::endl;
     // HeapTable table("_test_data_cpp", column_names, column_attributes);
@@ -63,8 +63,8 @@ SlottedPage::SlottedPage(Dbt &block, BlockID block_id, bool is_new) : DbBlock(bl
 // }
 
 /**
- *  adds a new record to the block, assumes that the record itself has been 
- * marshaled into the memory at data. Returns an id suitable for fetching 
+ *  adds a new record to the block, assumes that the record itself has been
+ * marshaled into the memory at data. Returns an id suitable for fetching
  * it back later with get().
  */
 RecordID SlottedPage::add(const Dbt* data) {
@@ -82,8 +82,8 @@ RecordID SlottedPage::add(const Dbt* data) {
 }
 
 /**
- * get a record's data for a given record id. It will have to 
- * be unmarshaled by the client code (since only the client 
+ * get a record's data for a given record id. It will have to
+ * be unmarshaled by the client code (since only the client
  * knows how it was marshaled to store it) to expose the individual fields.
  */
 Dbt* SlottedPage::get(RecordID record_id) {
@@ -91,8 +91,8 @@ Dbt* SlottedPage::get(RecordID record_id) {
 }
 
 /**
- * like add, but where we already know the record id. Could be used 
- * to update the record's data or, for some file organizations, we 
+ * like add, but where we already know the record id. Could be used
+ * to update the record's data or, for some file organizations, we
  * compute the record id based on the record's fields.
  */
 void SlottedPage::put(RecordID record_id, const Dbt &data) {
@@ -230,16 +230,16 @@ void HeapFile::db_open(uint flags) {
 
 // Public
 /**
- * takes the name of the relation, the columns (in order), and all 
- * the column attributes (e.g., it's data type, any constraints, is 
- * it allowed to be null, etc.) It's not the job of DbRelation to track 
+ * takes the name of the relation, the columns (in order), and all
+ * the column attributes (e.g., it's data type, any constraints, is
+ * it allowed to be null, etc.) It's not the job of DbRelation to track
  * all this information. That's done by the schema storage.
  */
 HeapTable::HeapTable(Identifier table_name, ColumnNames column_names, ColumnAttributes column_attributes)
     : DbRelation(table_name, column_names, column_attributes), file(table_name) {}
 
 /**
- * corresponds to the SQL command CREATE TABLE. At minimum, it presumably 
+ * corresponds to the SQL command CREATE TABLE. At minimum, it presumably
  * sets up the DbFile and calls its create method.
  */
 void HeapTable::create() {
@@ -252,8 +252,8 @@ void HeapTable::create() {
 }
 
 /**
- * corresponds to the SQL command CREATE TABLE IF NOT EXISTS. Whereas 
- * create will throw an exception if the table already exists, this method 
+ * corresponds to the SQL command CREATE TABLE IF NOT EXISTS. Whereas
+ * create will throw an exception if the table already exists, this method
  * will just open the table if it already exists.
  */
 void HeapTable::create_if_not_exists() {
@@ -287,12 +287,12 @@ void HeapTable::close() {
 }
 
 /**
- * corresponds to the SQL command INSERT INTO TABLE. Takes a proposed row and adds 
- * it to the table. This is the method that determines the block to write it to 
- * and marshals the data and writes it to the block. It is also responsible for 
+ * corresponds to the SQL command INSERT INTO TABLE. Takes a proposed row and adds
+ * it to the table. This is the method that determines the block to write it to
+ * and marshals the data and writes it to the block. It is also responsible for
  * handling any constraints, applying defaults, etc.
- * but we'll only handle two data types for now, INTEGER (or INT) and TEXT. 
- * We won't handle any other column attributes or any NULL values. 
+ * but we'll only handle two data types for now, INTEGER (or INT) and TEXT.
+ * We won't handle any other column attributes or any NULL values.
  */
 Handle HeapTable::insert(const ValueDict *row) {
     this->open();
@@ -300,9 +300,9 @@ Handle HeapTable::insert(const ValueDict *row) {
 }
 
 /**
- * corresponds to the SQL command UPDATE. Like insert, but only applies specific 
- * field changes, keeping other fields as they were before. Same logic as insert 
- * for constraints, defaults, etc. The client needs to first obtain a handle to 
+ * corresponds to the SQL command UPDATE. Like insert, but only applies specific
+ * field changes, keeping other fields as they were before. Same logic as insert
+ * for constraints, defaults, etc. The client needs to first obtain a handle to
  * the row that is meant to be updated either from insert or from select.
  */
 void HeapTable::update(const Handle handle, const ValueDict *new_values) {
@@ -346,22 +346,32 @@ Handles* HeapTable::select(const ValueDict* where) {
  */
 ValueDict* HeapTable::project(Handle handle) {
     // get recordID and blockID from handle
+    BlockID block_id = handle.first;
+    RecordID record_id = handle.second;
     // use file to get block from blockID
+    SlottedPage* block = file.get(block_id);
     // use block to get data from recordID
+    Dbt* data = block->get(record_id);
     // unmarshal data to get a row
+    ValueDict* row = HeapTable::unmarshal(data);
     // return row
-    return nullptr;
+    return row;
 }
 
 ValueDict* HeapTable::project(Handle handle, const ColumnNames *column_names) {
-    // get recordID and blockID from handle
-    // use file to get block from blockID
-    // use block to get data from recordID -> the data is binary representation
-    // unmarshal data to get a row
-    // if there is column_names, loop through column_names and return row value
+    ValueDict* row = HeapTable::project(handle);
+    // it is the same with HeapTable::project(Handle handle), until here
+    // return the whole row if column_names does not exist
+    if ( column_names == nullptr) {
+        return row;
+    }
+    // if there is column_names, loop through column_names and return the value
     // in that column_name
-    // return row
-    return nullptr;
+    ValueDict* new_row = new std::map<Identifier, Value>;
+    for (auto const& column_name: *column_names) {
+        new_row->insert(std::pair<Identifier, Value>(column_name,row->at(column_name)));
+    }
+    return new_row;
 }
 
 // protected
