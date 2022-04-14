@@ -1,3 +1,4 @@
+#include <stdexcept>
 #include "heap_storage.h"
 /*
 * Naive Test from Kevin
@@ -6,6 +7,8 @@ bool test_heap_storage();
 
 // copied from instructor's code
 typedef u_int16_t u16;
+
+const char *ENV_DIR = "cpsc5300/data"; // the db dir
 
 /* -------------SlotttedPage::DbBlock-------------*/
 SlottedPage::SlottedPage(Dbt &block, BlockID block_id, bool is_new) : DbBlock(block, block_id) {
@@ -22,6 +25,11 @@ SlottedPage::SlottedPage(Dbt &block, BlockID block_id, bool is_new) : DbBlock(bl
 // SlottedPage::~SlottedPage() {
 // }
 
+/**
+ *  adds a new record to the block, assumes that the record itself has been 
+ * marshaled into the memory at data. Returns an id suitable for fetching 
+ * it back later with get().
+ */
 RecordID SlottedPage::add(const Dbt* data) {
     if (!has_room(data->get_size()))
         throw DbBlockNoRoomError("not enough room for new record");
@@ -36,19 +44,30 @@ RecordID SlottedPage::add(const Dbt* data) {
     return id;
 }
 
+/**
+ * get a record's data for a given record id. It will have to 
+ * be unmarshaled by the client code (since only the client 
+ * knows how it was marshaled to store it) to expose the individual fields.
+ */
 Dbt* SlottedPage::get(RecordID record_id) {
     return 0;
 }
 
-
+/**
+ * like add, but where we already know the record id. Could be used 
+ * to update the record's data or, for some file organizations, we 
+ * compute the record id based on the record's fields.
+ */
 void SlottedPage::put(RecordID record_id, const Dbt &data) {
     // nothing
 }
 
+// remove a record from the block (by record id).
 void SlottedPage::del(RecordID record_id) {
     //
 }
 
+// iterate through all the record ids in this block.
 RecordIDs* SlottedPage::ids(void) {
     return 0;
 }
@@ -98,7 +117,17 @@ void* SlottedPage::address(u16 offset) {
 // HeapFile::HeapFile(std::string name){} // re-definittion
 
 void HeapFile::create(void) {
-
+    DbEnv env(0U);
+	env.set_message_stream(&std::cout);
+	env.set_error_stream(&std::cerr);
+    try {
+	    env.open(ENV_DIR, DB_CREATE | DB_INIT_MPOOL, 0);
+    } catch (DbException &exc) {
+        std::cerr << "(sql5300: " << exc.what() << ")";
+        env.close(0);
+        exit(1);
+    }
+    _DB_ENV = &env;
 }
 
 void HeapFile::drop(void) {
@@ -106,15 +135,28 @@ void HeapFile::drop(void) {
 }
 
 void HeapFile::open(void) {
-
+	_DB_ENV->open(ENV_DIR, 0, 0);
 }
 
 void HeapFile::close(void) {
 
 }
 
+// Allocate a new block for the database file.
+// Returns the new empty DbBlock that is managing the records in this block and its block id.
 SlottedPage* HeapFile::get_new(void) {
-    return 0;
+    char block[DbBlock::BLOCK_SZ];
+    std::memset(block, 0, sizeof(block));
+    Dbt data(block, sizeof(block));
+
+    int block_id = ++this->last;
+    Dbt key(&block_id, sizeof(block_id));
+
+    // write out an empty block and read it back in so Berkeley DB is managing the memory
+    SlottedPage* page = new SlottedPage(data, this->last, true);
+    this->db.put(nullptr, &key, &data, 0); // write it out with initialization applied
+    this->db.get(nullptr, &key, &data, 0);
+    return page;
 }
 
 SlottedPage* HeapFile::get(BlockID block_id){
@@ -140,58 +182,110 @@ void HeapFile::db_open(uint flags) {
 }
 
 /* -------------HeapTable::DbRelation-------------*/
-
+// I think we can use the DbRelation aliases
 // More type aliases
-typedef std::string Identifier;
-typedef std::vector<Identifier> ColumnNames;
-typedef std::vector<ColumnAttribute> ColumnAttributes;
-typedef std::pair<BlockID, RecordID> Handle;
-typedef std::vector<Handle> Handles;  // FIXME: will need to turn this into an iterator at some point
-typedef std::map<Identifier, Value> ValueDict;
+// typedef std::string Identifier;
+// typedef std::vector<Identifier> ColumnNames;
+// typedef std::vector<ColumnAttribute> ColumnAttributes;
+// typedef std::pair<BlockID, RecordID> Handle;
+// typedef std::vector<Handle> Handles;  // FIXME: will need to turn this into an iterator at some point
+// typedef std::map<Identifier, Value> ValueDict;
 
 // Public
+/**
+ * takes the name of the relation, the columns (in order), and all 
+ * the column attributes (e.g., it's data type, any constraints, is 
+ * it allowed to be null, etc.) It's not the job of DbRelation to track 
+ * all this information. That's done by the schema storage.
+ */
+HeapTable::HeapTable(Identifier table_name, ColumnNames column_names, ColumnAttributes column_attributes)
+    : DbRelation(table_name, column_names, column_attributes), file(table_name) {}
 
-// HeapTable::HeapTable(Identifier table_name, ColumnNames column_names, ColumnAttributes column_attributes) {
-
-// }
-
+/**
+ * corresponds to the SQL command CREATE TABLE. At minimum, it presumably 
+ * sets up the DbFile and calls its create method.
+ */
 void HeapTable::create() {
-
+    try {
+        file.create();
+    }
+    catch (std::exception e) {
+        std::cerr << e.what() << std::endl;
+    }
 }
 
+/**
+ * corresponds to the SQL command CREATE TABLE IF NOT EXISTS. Whereas 
+ * create will throw an exception if the table already exists, this method 
+ * will just open the table if it already exists.
+ */
 void HeapTable::create_if_not_exists() {
-
+    try {
+        file.open();
+    }
+    catch (std::exception e) { // bdb.DBNoSuckFileError
+        file.create();
+    }
 }
 
+/**
+ * corresponds to the SQL command DROP TABLE. Deletes the underlying DbFile.
+ */
 void HeapTable::drop() {
-
+    file.drop();
 }
 
+/**
+ * opens the table for insert, update, delete, select, and project methods
+ */
 void HeapTable::open() {
-
+    file.open();
 }
 
+/**
+ * closes the table, temporarily disabling insert, update, delete, select, and project methods.
+ */
 void HeapTable::close() {
-
+    file.close();
 }
 
+/**
+ * corresponds to the SQL command INSERT INTO TABLE. Takes a proposed row and adds 
+ * it to the table. This is the method that determines the block to write it to 
+ * and marshals the data and writes it to the block. It is also responsible for 
+ * handling any constraints, applying defaults, etc.
+ * but we'll only handle two data types for now, INTEGER (or INT) and TEXT. 
+ * We won't handle any other column attributes or any NULL values. 
+ */
 Handle HeapTable::insert(const ValueDict *row) {
-    return std::pair<unsigned int, short unsigned int>(0,0);
+    this->open();
+    return this->append(this->validate(row));
 }
 
+/**
+ * corresponds to the SQL command UPDATE. Like insert, but only applies specific 
+ * field changes, keeping other fields as they were before. Same logic as insert 
+ * for constraints, defaults, etc. The client needs to first obtain a handle to 
+ * the row that is meant to be updated either from insert or from select.
+ */
 void HeapTable::update(const Handle handle, const ValueDict *new_values) {
-
+    throw std::logic_error("HeapTable::update method not implemented");
 }
 
+/**
+ * corresponds to the SQL command DELETE FROM. Deletes a row for a given
+ * row handle (obtained from insert or select).
+ */
 void HeapTable::del(const Handle handle) {
-
+    throw std::logic_error("HeapTable::del method not implemented");
 }
 
+/**
+ * corresponds to the SQL query SELECT * FROM...WHERE. Returns handles to the matching rows.
+ * For select we'll ignore any WHERE or GROUP BY or LIMIT criteria. We will support the project method.
+ * We won't yet support update or delete.
+ */
 Handles* HeapTable::select() {
-    return nullptr;
-}
-
-Handles* HeapTable::select(const ValueDict* where) {
     Handles* handles = new Handles();
     BlockIDs* block_ids = file.block_ids();
     for (auto const& block_id: *block_ids) {
@@ -206,20 +300,54 @@ Handles* HeapTable::select(const ValueDict* where) {
     return handles;
 }
 
+Handles* HeapTable::select(const ValueDict* where) {
+    throw std::logic_error("HeapTable::select method with where clause not implemented");
+}
+
+/**
+ * extracts specific fields from a row handle (a projection).
+ */
 ValueDict* HeapTable::project(Handle handle) {
+    // get recordID and blockID from handle
+    // use file to get block from blockID
+    // use block to get data from recordID
+    // unmarshal data to get a row
+    // return row
     return nullptr;
 }
 
 ValueDict* HeapTable::project(Handle handle, const ColumnNames *column_names) {
+    // get recordID and blockID from handle
+    // use file to get block from blockID
+    // use block to get data from recordID -> the data is binary representation
+    // unmarshal data to get a row
+    // if there is column_names, loop through column_names and return row value
+    // in that column_name
+    // return row
     return nullptr;
 }
 
 // protected
 ValueDict* HeapTable::validate(const ValueDict *row) {
+    // for all columns in column_names
+    // if column_name is not in row, throw ValueError exception
+    // else, value = row[column_name]
+    // add full_row[column_name] = value;
+    // return full_row
     return nullptr;
 }
 
 Handle HeapTable::append(const ValueDict *row) {
+    // marshals the row into data -> binary representation
+    // find where to put that new data by geting the last block in the file
+    // file.get(file.last), which returns a block
+    // in try, add data to the block and return the recordID returned
+    // if there's a ValueError exception, block is full, so get new block
+    // block = file.get_new()
+    // recordID = block.add(data)
+    // put the block back in the file
+    // file.put(block);
+    // return a pair file.last, recordID
     return std::pair<unsigned int, short unsigned int>(0,0);
 }
 
@@ -254,9 +382,15 @@ Dbt* HeapTable::marshal(const ValueDict* row) {
 }
 
 ValueDict* HeapTable::unmarshal(Dbt *data) {
+    char *output_data = (char *)data->get_data();
+    // data will be in the same order as the colum name
+    // loop through and for each column, get its data type
+    // to know how many bytes to convert back and to what
+    // add that to a row[column_name] = converted_data
+    // also need to keep track of the offset
+    
     return nullptr;
 }
-
 
 /* -------------Naive Test-------------*/
 bool test_heap_storage() {
