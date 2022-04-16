@@ -376,12 +376,16 @@ ValueDict* HeapTable::project(Handle handle, const ColumnNames *column_names) {
 
 // protected
 ValueDict* HeapTable::validate(const ValueDict *row) {
-    // for all columns in column_names
-    // if column_name is not in row, throw ValueError exception
-    // else, value = row[column_name]
-    // add full_row[column_name] = value;
-    // return full_row
-    return nullptr;
+    ValueDict* full_row = new ValueDict;
+    for (auto const& column_name: this->column_names) {
+        ValueDict::const_iterator column = row->find(column_name);
+        if(column == row->end()) {
+            throw new std::invalid_argument("Row missing column name " + column_name);
+        }
+        Value value = column->second;
+        full_row->insert(std::pair<Identifier, Value>(column_name, value));
+    }
+    return full_row;
 }
 
 Handle HeapTable::append(const ValueDict *row) {
