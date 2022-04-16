@@ -106,10 +106,11 @@ RecordIDs* SlottedPage::ids(void) {
 }
 
 // SlottedPage protected
-// typedef u_int16_t RecordID;
-// typedef u_int32_t BlockID;
+// Get the size and offset for given id. For id of zero, it is the block header.
+// The opposite of put
 void SlottedPage::get_header(u_int16_t &size, u_int16_t &loc, RecordID id) {
-
+    size = get_n(4 * id);
+    loc = get_n(4 * id + 2);
 }
 
 // Store the size and offset for given id. For id of zero, store the block header.
@@ -118,13 +119,13 @@ void SlottedPage::put_header(RecordID id, u16 size, u16 loc) {
         size = this->num_records;
         loc = this->end_free;
     }
-    put_n(4*id, size);
-    put_n(4*id + 2, loc);
+    put_n(4 * id, size);
+    put_n(4 * id + 2, loc);
 }
 
 bool SlottedPage::has_room(u_int16_t size) {
-    u16 free_space = this->end_free - this->num_records * 4;
-    return (size + 4) < free_space;
+    u16 free_space = this->end_free - (this->num_records + 1) * 4;
+    return (size + 4) <= free_space;
 }
 
 void SlottedPage::slide(u_int16_t start, u_int16_t end) {
