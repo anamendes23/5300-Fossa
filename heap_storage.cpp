@@ -106,11 +106,15 @@ void SlottedPage::put(RecordID record_id, const Dbt &data) {
             throw new DbBlockNoRoomError("Not enough room in block");
         }
         // slide right to left
+        slide(curr_loc + new_size, curr_loc + curr_size);
         // update block
+        std::memcpy(this->address(curr_loc + new_size), data.get_data(), new_size);
     }
     else {
         // update block
+        std::memcpy(this->address(curr_loc + new_size), data.get_data(), new_size);
         // slide from left to right
+        slide(curr_loc + new_size, curr_loc + curr_size);
     }
     // slide function updates headers, so grab header info again
     get_header(curr_size, curr_loc, record_id);
@@ -121,9 +125,16 @@ void SlottedPage::put(RecordID record_id, const Dbt &data) {
 void SlottedPage::del(RecordID record_id) {
     // similar to put (slide stuff)
     // first check if id exists
+    if (record_id > num_records) {
+        throw new DbRecordIdNotFound();
+    }
+    // assign current size and current location of the record
+    u16 curr_size, curr_loc;
+    get_header(curr_size, curr_loc, record_id);
     // put zeroes in the header of id = record_id
+    put_header(record_id, 0, 0);
     // if yes, slide stuff over the record
-    // slide(loc, loc + size)
+    slide(curr_loc, curr_loc + curr_size);
 }
 
 // iterate through all the record ids in this block.
