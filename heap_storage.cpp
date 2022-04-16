@@ -387,16 +387,22 @@ ValueDict* HeapTable::validate(const ValueDict *row) {
 
 Handle HeapTable::append(const ValueDict *row) {
     // marshals the row into data -> binary representation
+    Dbt *data = HeapTable::marshal(row);
     // find where to put that new data by geting the last block in the file
-    // file.get(file.last), which returns a block
+    SlottedPage *block = file.get(file.get_last_block_id());
     // in try, add data to the block and return the recordID returned
-    // if there's a ValueError exception, block is full, so get new block
-    // block = file.get_new()
-    // recordID = block.add(data)
+    RecordID record_id = 0;
+    try {
+        record_id = block->add(data);
+    } // if there's a ValueError exception, block is full, so get new block
+    catch (DbBlockNoRoomError e) {
+        block = file.get_new();
+        record_id = block->add(data);
+    }
     // put the block back in the file
-    // file.put(block);
-    // return a pair file.last, recordID
-    return std::pair<unsigned int, short unsigned int>(0,0);
+    file.put(block);
+    // return a pair file.last, recordID // u_int32_t, u_int16_t
+    return std::pair<unsigned int, short unsigned int>(file.get_last_block_id(),record_id);
 }
 
 // return the bits to go into the file
