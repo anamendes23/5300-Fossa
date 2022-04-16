@@ -126,7 +126,7 @@ void SlottedPage::del(RecordID record_id) {
     // similar to put (slide stuff)
     // first check if id exists
     if (record_id > num_records) {
-        throw new DbRecordIdNotFound();
+        throw new DbRecordIdNotFound("Record id does not exist: " + record_id);
     }
     // assign current size and current location of the record
     u16 curr_size, curr_loc;
