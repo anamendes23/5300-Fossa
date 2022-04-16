@@ -1,9 +1,11 @@
 #include <stdexcept>
+#include <bitset>
 #include "heap_storage.h"
 /*
 * Naive Test from Kevin
 */
 bool test_heap_storage() {
+    SlottedPage::test_slotted_page();
     ColumnNames column_names;
     column_names.push_back("a");
     column_names.push_back("b");
@@ -126,11 +128,14 @@ void SlottedPage::del(RecordID record_id) {
 
 // iterate through all the record ids in this block.
 RecordIDs* SlottedPage::ids(void) {
+    RecordIDs *record_ids = new RecordIDs;
     // we know the number of records
     // this->num_records
     // from 1 to num_records] we add those ids to the vector
-    // RecordIDs and return it
-    return 0;
+    for(int i = 1; i <= this->num_records; i++) {
+        record_ids->push_back(i);
+    }
+    return record_ids;
 }
 
 // SlottedPage protected
@@ -164,14 +169,25 @@ void SlottedPage::slide(u_int16_t start, u_int16_t end) {
     }
     // if shift is negative, we need more space
     // slide records from right to left
-
     // if shift is positive, we have space left-over
     // slide records from left to right
-
+    u16 move_loc = this->end_free + 1;
+    u16 move_size = (start - 1) - move_loc;
+    u16 new_loc = move_loc + shift;
+    // current records;
+    Dbt temp_data(this->address(move_loc), move_size);
+    std::memcpy((void *)new_loc, (void *)move_loc, move_size);
     // update headers
     // loop through all ids
-    // for ids loc <= start, we add the shift
-
+    u16 size, loc;
+    for (auto const& record_id: *ids()) {
+        get_header(size, loc, record_id);
+        // for ids loc <= start, we add the shift
+        if(loc <= start) {
+            loc += shift;
+            put_header(record_id, size, loc);
+        }
+    }
     // update end_free
     this->end_free += shift;
     // update header for id=0
@@ -192,6 +208,23 @@ void SlottedPage::put_n(u16 offset, u16 n) {
 void* SlottedPage::address(u16 offset) {
     return (void*)((char*)this->block.get_data() + offset);
 }
+
+ bool SlottedPage::test_slotted_page() {
+    char block[BLOCK_SZ];
+    Dbt data(block, sizeof(block));
+    BlockID block_id = 0;
+    SlottedPage slotted_page(data, block_id, true);
+    char *hello = "hello";
+    std::bitset<8> *hello_bits = new std::bitset<8>(hello[0]);
+    Dbt *hello_data = new Dbt((void *)hello_bits, 8);
+    RecordID id = slotted_page.add(hello_data);
+    Dbt *result_data = slotted_page.get(id);
+    std::cout << "here" << std::endl;
+    if(result_data == hello_data) {
+        return true;
+    }
+    return false;
+ }
 
 /* -------------HeapFile::DbFile-------------*/
 // public
@@ -263,15 +296,6 @@ void HeapFile::db_open(uint flags) {
 }
 
 /* -------------HeapTable::DbRelation-------------*/
-// I think we can use the DbRelation aliases
-// More type aliases
-// typedef std::string Identifier;
-// typedef std::vector<Identifier> ColumnNames;
-// typedef std::vector<ColumnAttribute> ColumnAttributes;
-// typedef std::pair<BlockID, RecordID> Handle;
-// typedef std::vector<Handle> Handles;  // FIXME: will need to turn this into an iterator at some point
-// typedef std::map<Identifier, Value> ValueDict;
-
 // Public
 /**
  * takes the name of the relation, the columns (in order), and all

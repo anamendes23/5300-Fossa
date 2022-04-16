@@ -61,6 +61,7 @@ public:
 
     virtual RecordIDs *ids(void);
 
+    static bool test_slotted_page();
 protected:
     u_int16_t num_records;
     u_int16_t end_free;
