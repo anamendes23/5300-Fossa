@@ -28,11 +28,12 @@ typedef u_int32_t BlockID;
 typedef std::vector<RecordID> RecordIDs;
 typedef std::length_error DbBlockNoRoomError;
 typedef std::invalid_argument DbInvalidRowError;
+typedef std::invalid_argument DbRecordIdNotFound;
 
 /**
- * @class DbBlock - abstract base class for blocks in our database files 
+ * @class DbBlock - abstract base class for blocks in our database files
  * (DbBlock's belong to DbFile's.)
- * 
+ *
  * Methods for putting/getting records in blocks:
  * 	initialize_new()
  * 	add(data)
@@ -253,15 +254,15 @@ public:
 
 /**
  * @class DbRelation - top-level object handling a physical database relation
- * 
+ *
  * Methods:
  * 	create()
  * 	create_if_not_exists()
  * 	drop()
- * 	
+ *
  * 	open()
  * 	close()
- * 	
+ *
  *	insert(row)
  *	update(handle, new_values)
  *	del(handle)
@@ -284,7 +285,7 @@ public:
 //     HeapTable table1("_test_create_drop_cpp", column_names, column_attributes);
 //     table1.create();
 //     std::cout << "create ok" << std::endl;
-//     table1.drop();  // drop makes the object unusable because of BerkeleyDB 
+//     table1.drop();  // drop makes the object unusable because of BerkeleyDB
 //                     //restriction -- maybe want to fix this some day
 //     std::cout << "drop ok" << std::endl;
 //     HeapTable table("_test_data_cpp", column_names, column_attributes);
