@@ -83,7 +83,9 @@ RecordID SlottedPage::add(const Dbt* data) {
  * knows how it was marshaled to store it) to expose the individual fields.
  */
 Dbt* SlottedPage::get(RecordID record_id) {
-    return 0;
+    u16 size = get_n(4 * record_id);
+    u16 loc = get_n(4 * record_id + 2);
+    return new Dbt(this->address(loc), size);
 }
 
 /**
@@ -92,16 +94,42 @@ Dbt* SlottedPage::get(RecordID record_id) {
  * compute the record id based on the record's fields.
  */
 void SlottedPage::put(RecordID record_id, const Dbt &data) {
-    // nothing
+    u16 curr_size, curr_loc;
+    get_header(curr_size, curr_loc, record_id);
+    u16 new_size = data.get_size();
+    // if new_size is greater, need to make space by sliding records
+    if(new_size > curr_size) {
+        // if needs more space, do we have room?
+        if(!has_room(new_size - curr_size)) {
+            throw new DbBlockNoRoomError("Not enough room in block");
+        }
+        // slide right to left
+        // update block
+    }
+    else {
+        // update block
+        // slide from left to right
+    }
+    // slide function updates headers, so grab header info again
+    get_header(curr_size, curr_loc, record_id);
+    put_header(record_id, new_size, curr_loc);
 }
 
 // remove a record from the block (by record id).
 void SlottedPage::del(RecordID record_id) {
-    //
+    // similar to put (slide stuff)
+    // first check if id exists
+    // put zeroes in the header of id = record_id
+    // if yes, slide stuff over the record
+    // slide(loc, loc + size)
 }
 
 // iterate through all the record ids in this block.
 RecordIDs* SlottedPage::ids(void) {
+    // we know the number of records
+    // this->num_records
+    // from 1 to num_records] we add those ids to the vector
+    // RecordIDs and return it
     return 0;
 }
 
@@ -129,7 +157,25 @@ bool SlottedPage::has_room(u_int16_t size) {
 }
 
 void SlottedPage::slide(u_int16_t start, u_int16_t end) {
+    u16 shift = end - start;
 
+    if(shift == 0) {
+        return;
+    }
+    // if shift is negative, we need more space
+    // slide records from right to left
+
+    // if shift is positive, we have space left-over
+    // slide records from left to right
+
+    // update headers
+    // loop through all ids
+    // for ids loc <= start, we add the shift
+
+    // update end_free
+    this->end_free += shift;
+    // update header for id=0
+    this->put_header();
 }
 
 // Get 2-byte integer at given offset in block.
