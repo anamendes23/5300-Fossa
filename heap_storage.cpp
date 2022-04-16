@@ -58,10 +58,6 @@ SlottedPage::SlottedPage(Dbt &block, BlockID block_id, bool is_new) : DbBlock(bl
     }
 }
 
-// not sure if we need it
-// SlottedPage::~SlottedPage() {
-// }
-
 /**
  *  adds a new record to the block, assumes that the record itself has been
  * marshaled into the memory at data. Returns an id suitable for fetching
@@ -127,7 +123,8 @@ void SlottedPage::put_header(RecordID id, u16 size, u16 loc) {
 }
 
 bool SlottedPage::has_room(u_int16_t size) {
-    return false;
+    u16 free_space = this->end_free - this->num_records * 4;
+    return (size + 4) < free_space;
 }
 
 void SlottedPage::slide(u_int16_t start, u_int16_t end) {
@@ -380,7 +377,7 @@ ValueDict* HeapTable::validate(const ValueDict *row) {
     for (auto const& column_name: this->column_names) {
         ValueDict::const_iterator column = row->find(column_name);
         if(column == row->end()) {
-            throw new std::invalid_argument("Row missing column name " + column_name);
+            throw new DbInvalidRowError("Row missing column name " + column_name);
         }
         Value value = column->second;
         full_row->insert(std::pair<Identifier, Value>(column_name, value));
