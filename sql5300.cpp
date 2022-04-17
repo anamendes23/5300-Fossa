@@ -155,7 +155,7 @@ int main(int argc, char** argv) {
         }
         // Naive Test
         if (input == "test") {
-            std::cout << "test_heap_storage: " << (test_heap_storage() ? "ok" : "failed") << std::endl;
+            std::cout << "test_heap_storage: " << (test_heap_storage() ? "\nTests Passed" : "\nTests Failed") << std::endl;
             continue;
         }
 
