@@ -5,7 +5,9 @@
 * Naive Test from Kevin
 */
 bool test_heap_storage() {
-    SlottedPage::test_slotted_page();
+    SlottedPage::test_slotted_page_addOneChar_sucess();
+    SlottedPage::test_slotted_page_addHello_sucess();
+    SlottedPage::test_slotted_page_addAndPut_sucess();
     ColumnNames column_names;
     column_names.push_back("a");
     column_names.push_back("b");
@@ -220,7 +222,8 @@ void* SlottedPage::address(u16 offset) {
     return (void*)((char*)this->block.get_data() + offset);
 }
 
- bool SlottedPage::test_slotted_page() {
+ bool SlottedPage::test_slotted_page_addOneChar_sucess() {
+    std::cout << "\n addOneChar_sucess";
     char block[BLOCK_SZ];
     Dbt data(block, sizeof(block));
     BlockID block_id = 0;
@@ -230,13 +233,82 @@ void* SlottedPage::address(u16 offset) {
     Dbt *hello_data = new Dbt((void *)hello_bits, 8);
     RecordID id = slotted_page.add(hello_data);
     Dbt *result_data = slotted_page.get(id);
-    std::cout << "here" << std::endl;
     if(result_data == hello_data) {
         return true;
     }
     return false;
  }
 
+  bool SlottedPage::test_slotted_page_addHello_sucess() {
+    std::cout << "\n addHello_sucess";
+    // Data Setup
+    char block[BLOCK_SZ];
+    Dbt data(block, sizeof(block));
+
+    BlockID block_id = 0;
+    SlottedPage slotted_page(data, block_id, true);
+
+    char hello[] = "hello"; // 8 * 5 = 40 bits
+    char *hello_ptr = hello;
+    // Dbt *hello_data = new Dbt((void *)hello, 40);
+    Dbt *hello_data = new Dbt(hello_ptr, 40);
+
+    // Action
+    RecordID id = slotted_page.add(hello_data);
+    std::cout << " record_id: " << id;
+    Dbt *result_data = slotted_page.get(id);
+
+    // Verify
+    if(result_data == hello_data) {
+        return true;
+    }
+    return false;
+ }
+
+  bool SlottedPage::test_slotted_page_addAndPut_sucess() {
+    std::cout << "\n addAndPut_sucess";
+    // Set up slotted page
+    char block[BLOCK_SZ];
+    Dbt data(block, sizeof(block));
+
+    BlockID block_id = 0;
+    SlottedPage slotted_page(data, block_id, true);
+
+    // Set up more Dbt
+    char *hello = "hello"; // 8 * 5 = 40 bits
+    Dbt *hello_data = new Dbt((void *)hello, 40);
+
+    char *wow = "wow"; // 8 * 3 = 40 bits
+    Dbt *wow_data = new Dbt((void *)wow, 24);
+
+    char *bye = "bye"; // 8 * 3 = 40 bits
+    Dbt *bye_data = new Dbt((void *)bye, 24);
+
+    // Action
+    RecordID id = slotted_page.add(hello_data);
+    std::cout << " record_id(hello): " << id;
+    Dbt *result_data = slotted_page.get(id);
+
+    RecordID id2 = slotted_page.add(wow_data);
+    std::cout << " record_id2(wow): " << id2;
+    Dbt *result_data2 = slotted_page.get(id2);
+
+    // Verify
+    if(result_data != hello_data
+        || result_data2 != wow_data) {
+        return false;
+    }
+
+    // More Action
+    // replace 'wow' with 'bye'
+    slotted_page.put(id2, *bye_data); // tricky pointer here
+    result_data2 = slotted_page.get(id2);
+    if (result_data2 == bye_data) {
+        return true;
+    }
+    // Verify
+    return false;
+ }
 /* -------------HeapFile::DbFile-------------*/
 // public
 // HeapFile::HeapFile(std::string name){} // re-definittion
