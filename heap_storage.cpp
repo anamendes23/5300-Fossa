@@ -5,9 +5,11 @@
 * Naive Test from Kevin
 */
 bool test_heap_storage() {
-    SlottedPage::test_slotted_page_addOneChar_sucess();
-    SlottedPage::test_slotted_page_addHello_sucess();
-    SlottedPage::test_slotted_page_addAndPut_sucess();
+    if(SlottedPage::test_slotted_page_del_sucessAndThrowException() == false) {
+        std::cout << "test_slotted_page_del_sucessAndThrowException FAIL! " << std::endl;
+        return false;
+    }
+
     ColumnNames column_names;
     column_names.push_back("a");
     column_names.push_back("b");
@@ -103,18 +105,20 @@ void SlottedPage::put(RecordID record_id, const Dbt &data) {
     u16 new_size = data.get_size();
     // if new_size is greater, need to make space by sliding records
     if(new_size > curr_size) {
+        // extra space need
+        u16 extra_space = new_size - curr_size;
         // if needs more space, do we have room?
-        if(!has_room(new_size - curr_size)) {
+        if(!has_room(extra_space)) {
             throw new DbBlockNoRoomError("Not enough room in block");
         }
         // slide right to left
         slide(curr_loc + new_size, curr_loc + curr_size);
         // update block
-        std::memcpy(this->address(curr_loc + new_size), data.get_data(), new_size);
+        std::memcpy(this->address(curr_loc - extra_space), data.get_data(), new_size);
     }
-    else {
+    else { // new_size is smaller
         // update block
-        std::memcpy(this->address(curr_loc + new_size), data.get_data(), new_size);
+        std::memcpy(this->address(curr_loc), data.get_data(), new_size);
         // slide from left to right
         slide(curr_loc + new_size, curr_loc + curr_size);
     }
@@ -133,8 +137,10 @@ void SlottedPage::del(RecordID record_id) {
     // assign current size and current location of the record
     u16 curr_size, curr_loc;
     get_header(curr_size, curr_loc, record_id);
-    // put zeroes in the header of id = record_id
+    // put zeroes in the header of id = record_id, size = 0, loc = 0
     put_header(record_id, 0, 0);
+    // python code deoes not have this line, but we still add this here
+    --this->num_records;
     // if yes, slide stuff over the record
     slide(curr_loc, curr_loc + curr_size);
 }
@@ -155,8 +161,8 @@ RecordIDs* SlottedPage::ids(void) {
 // Get the size and offset for given id. For id of zero, it is the block header.
 // The opposite of put
 void SlottedPage::get_header(u_int16_t &size, u_int16_t &loc, RecordID id) {
-    size = get_n(4 * id);
-    loc = get_n(4 * id + 2);
+    size = get_n(4 * id); // 2 bytes
+    loc = get_n(4 * id + 2); // 2 bytes
 }
 
 // Store the size and offset for given id. For id of zero, store the block header.
@@ -165,8 +171,8 @@ void SlottedPage::put_header(RecordID id, u16 size, u16 loc) {
         size = this->num_records;
         loc = this->end_free;
     }
-    put_n(4 * id, size);
-    put_n(4 * id + 2, loc);
+    put_n(4 * id, size); // 2 bytes
+    put_n(4 * id + 2, loc); // 2 bytes
 }
 
 bool SlottedPage::has_room(u_int16_t size) {
@@ -185,14 +191,20 @@ void SlottedPage::slide(u_int16_t start, u_int16_t end) {
     // if shift is positive, we have space left-over
     // slide records from left to right
     u16 move_loc = this->end_free + 1;
-    u16 move_size = (start - 1) - move_loc;
+    // TODO Verify this revision
+    // u16 move_size = (start - 1) - move_loc; // legacy code
+    // u16 move_size = (start + 1) - move_loc; // revision
+    u16 move_size = start - this->end_free; // revision
     u16 new_loc = move_loc + shift;
     // current records;
     Dbt temp_data(this->address(move_loc), move_size);
-    std::memcpy((void *)new_loc, (void *)move_loc, move_size);
+    // TODO Verify this
+    // std::memcpy((void *)new_loc, (void *)move_loc, move_size);
+    std::memcpy(this->address(new_loc), this->address(move_loc), move_size);
+
     // update headers
-    // loop through all ids
     u16 size, loc;
+    // loop through all ids
     for (auto const& record_id: *ids()) {
         get_header(size, loc, record_id);
         // for ids loc <= start, we add the shift
@@ -222,7 +234,7 @@ void* SlottedPage::address(u16 offset) {
     return (void*)((char*)this->block.get_data() + offset);
 }
 
- bool SlottedPage::test_slotted_page_addOneChar_sucess() {
+bool SlottedPage::test_slotted_page_addOneChar_sucess() {
     std::cout << "\n addOneChar_sucess";
     char block[BLOCK_SZ];
     Dbt data(block, sizeof(block));
@@ -237,9 +249,9 @@ void* SlottedPage::address(u16 offset) {
         return true;
     }
     return false;
- }
+}
 
-  bool SlottedPage::test_slotted_page_addHello_sucess() {
+bool SlottedPage::test_slotted_page_addHello_sucess() {
     std::cout << "\n addHello_sucess";
     // Data Setup
     char block[BLOCK_SZ];
@@ -263,9 +275,9 @@ void* SlottedPage::address(u16 offset) {
         return true;
     }
     return false;
- }
+}
 
-  bool SlottedPage::test_slotted_page_addAndPut_sucess() {
+bool SlottedPage::test_slotted_page_addAndPut_sucess() {
     std::cout << "\n addAndPut_sucess";
     // Set up slotted page
     char block[BLOCK_SZ];
@@ -308,7 +320,82 @@ void* SlottedPage::address(u16 offset) {
     }
     // Verify
     return false;
- }
+}
+
+bool SlottedPage::test_slotted_page_addAndPutThatUsesSlide_sucess() {
+    std::cout << "\n addAndPutThatUsesSlide";
+    // Set up slotted page
+    char block[BLOCK_SZ];
+    Dbt data(block, sizeof(block));
+
+    BlockID block_id = 0;
+    SlottedPage slotted_page(data, block_id, true);
+
+    // Set up more Dbt
+    char *hello = "hello"; // 8 * 5 = 40 bits
+    Dbt *hello_data = new Dbt((void *)hello, 40);
+
+    char *wow = "wow"; // 8 * 3 = 40 bits
+    Dbt *wow_data = new Dbt((void *)wow, 24);
+
+    char *bye = "bye"; // 8 * 3 = 40 bits
+    Dbt *bye_data = new Dbt((void *)bye, 24);
+
+    // Action
+    RecordID id = slotted_page.add(hello_data);
+    std::cout << " record_id(hello): " << id;
+    Dbt *result_data = slotted_page.get(id);
+
+    RecordID id2 = slotted_page.add(wow_data);
+    std::cout << " record_id2(wow): " << id2;
+    Dbt *result_data2 = slotted_page.get(id2);
+
+    // Verify
+    if(result_data != hello_data
+        || result_data2 != wow_data) {
+        return false;
+    }
+
+    // More Action
+    // replace 'hello' with 'bye'
+    slotted_page.put(id, *bye_data); // tricky pointer here
+    result_data = slotted_page.get(id);
+    if (result_data == bye_data) {
+        return true;
+    }
+    // Verify
+    return false;
+}
+
+bool SlottedPage::test_slotted_page_del_sucessAndThrowException() {
+    std::cout << "\n del_sucessAndThrowException";
+    // Data Setup
+    char block[BLOCK_SZ];
+    Dbt data(block, sizeof(block));
+
+    BlockID block_id = 0;
+    SlottedPage slotted_page(data, block_id, true);
+
+    char hello[] = "hello"; // 8 * 5 = 40 bits
+    char *hello_ptr = hello;
+    Dbt *hello_data = new Dbt(hello_ptr, 40);
+
+    // Action: add
+    RecordID id = slotted_page.add(hello_data);
+    std::cout << " record_id(hello): " << id;
+    Dbt *result_data = slotted_page.get(id);
+
+    // Action: del, should be successful
+    slotted_page.del(id);
+
+    try {
+        slotted_page.del(id);
+    } catch (DbRecordIdNotFound exception) {
+        return true;
+    }
+    return false;
+}
+
 /* -------------HeapFile::DbFile-------------*/
 // public
 // HeapFile::HeapFile(std::string name){} // re-definittion
