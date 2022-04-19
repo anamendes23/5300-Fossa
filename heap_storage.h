@@ -78,6 +78,8 @@ protected:
 
     virtual bool has_room(u_int16_t size);
 
+    // start: location of data record before sliding
+    // end: location of data record after sliding
     virtual void slide(u_int16_t start, u_int16_t end);
 
     virtual u_int16_t get_n(u_int16_t offset);
