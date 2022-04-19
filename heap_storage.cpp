@@ -139,8 +139,7 @@ void SlottedPage::del(RecordID record_id) {
     get_header(curr_size, curr_loc, record_id);
     // put zeroes in the header of id = record_id, size = 0, loc = 0
     put_header(record_id, 0, 0);
-    // python code deoes not have this line, but we still add this here
-    --this->num_records;
+    // --this->num_records; // why don't we need this?
     // if yes, slide stuff over the record
     slide(curr_loc, curr_loc + curr_size);
 }
@@ -390,7 +389,8 @@ bool SlottedPage::test_slotted_page_del_sucessAndThrowException() {
 
     try {
         slotted_page.del(id);
-    } catch (DbRecordIdNotFound exception) {
+    } catch (const DbRecordIdNotFound& e) {
+        cerr << e.what();
         return true;
     }
     return false;
