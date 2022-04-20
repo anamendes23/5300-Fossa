@@ -398,9 +398,9 @@ bool SlottedPage::test_slotted_page_del_sucessAndThrowException() {
 
 /* -------------HeapFile::DbFile-------------*/
 // public
-// HeapFile::HeapFile(std::string name){} // re-definittion
-
+// create the database file that will store the blocks for this relation.
 void HeapFile::create(void) {
+    // This has to be done somewhere else
     DbEnv env(0U);
 	env.set_message_stream(&std::cout);
 	env.set_error_stream(&std::cerr);
@@ -412,22 +412,39 @@ void HeapFile::create(void) {
         exit(1);
     }
     _DB_ENV = &env;
+
+    // actual implementation
+    // call dp_open(); -> use flags similar to example.cpp
+    // get a new block and put it in the file
 }
 
+// delete?
+// Delete the physical file.
 void HeapFile::drop(void) {
-
+    // open
+    // close
+    // in python: os.remove(dbfilename);
 }
 
+// open the database file.
 void HeapFile::open(void) {
+    // done somewhere else
 	_DB_ENV->open(ENV_DIR, 0, 0);
+    // call dp_open without flags
 }
 
+// close the database file.
 void HeapFile::close(void) {
-
+    // how to check if db is closed already?
+    // call db.close();
 }
 
 // Allocate a new block for the database file.
 // Returns the new empty DbBlock that is managing the records in this block and its block id.
+/**
+ * create a new empty block and add it to the database file.
+ * Returns the new block to be modified by the client via the DbBlock interface.
+ */
 SlottedPage* HeapFile::get_new(void) {
     char block[DbBlock::BLOCK_SZ];
     std::memset(block, 0, sizeof(block));
@@ -443,26 +460,50 @@ SlottedPage* HeapFile::get_new(void) {
     return page;
 }
 
+/**
+ * get a block from the database file (via the buffer manager, presumably) for a given block id.
+ * The client code can then read or modify the block via the DbBlock interface.
+ */
 SlottedPage* HeapFile::get(BlockID block_id){
-    return 0;
+    char block[DbBlock::BLOCK_SZ];
+    std::memset(block, 0, sizeof(block));
+    Dbt data(block, sizeof(block));
+
+    SlottedPage* page = new SlottedPage(data, block_id, false);
+    return page;
 }
 
+/**
+ * write a block to the file. Presumably the client has made modifications in the block that 
+ * he would like to save. Typically, it's up to the buffer manager exactly when the block is
+ * actually written out to disk.
+ */
 void HeapFile::put(DbBlock *block) {
-
+    //db.put(block id, data in bytes)
 }
 
+// iterate through all the block ids in the file.
 BlockIDs* HeapFile::block_ids() {
-    return 0;
+    // BlockIDs is a vector<BlockID>
+    // BlockID is a u_int32_t type
+    BlockIDs* block_ids = new BlockIDs;
+    // loop through all the block ids and return the vector
+    return block_ids;
 }
-
-// don't need re-definition
-// u_int32_t HeapFile::get_last_block_id() {
-//     return last;
-// }
 
 // protected
+// Wrapper for Berkeley DB open, which does both open and creation.
 void HeapFile::db_open(uint flags) {
-
+    // check if closed/exist
+    // initialize db -> DB()
+    // set the record leng (db.set_re_len) as the block_size
+    // set dbfilename = as the path of the _DB_ENV + name + ".db"
+    // set dbtype = DB_RECNO
+    // call db.open(dbfilename, Null, dbtype, flags);
+    // ----- this stuff below is in python, not sure if we need it ----
+    // set stat = db.stat(DB_FAST_STAT)
+    // set last = stat["ndata"]
+    // set closed = False
 }
 
 /* -------------HeapTable::DbRelation-------------*/
