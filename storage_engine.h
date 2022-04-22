@@ -29,6 +29,7 @@ typedef std::vector<RecordID> RecordIDs;
 typedef std::length_error DbBlockNoRoomError;
 typedef std::invalid_argument DbInvalidRowError;
 typedef std::invalid_argument DbRecordIdNotFound;
+typedef std::logic_error FailToRemoveDbfile;
 
 /**
  * @class DbBlock - abstract base class for blocks in our database files
