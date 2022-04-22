@@ -1,11 +1,10 @@
-/*
- * CPSC 5300 - Physica DB Design and Optmiziation, Seattle University
- * Professor Kevin Lundeen
- * Ana Carolina de Souza Mendes, MSCS
- * Fangsheng Xu, MSCS
+/**
+ * @file sql5300.cpp - SQL shell
+ * @author Ana Carolina de Souza Mendes, MSCS
+ * @author Fangsheng Xu, MSCS
+ * @see "Seattle University, CPSC5300, Spring 2022"
  * This is free and unencumbered software released into the public domain.
  */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,21 +13,14 @@
 #include <sys/types.h>
 #include "SQLParser.h"
 #include "sqlhelper.h"
-
-// Milesstone2
 #include "heap_storage.h"
-
-// Milestone2
-// using namespace std;
-// using namespace hsql;
 
 #define SELECT hsql::StatementType::kStmtSelect
 #define CREATE hsql::StatementType::kStmtCreate
 #define OPTYPE hsql::Expr::OperatorType
 
-/*
- * we allocate and initialize the _DB_ENV global
- * Professor added it
+/**
+ * Global db environment used in storage engine
  */
 DbEnv *_DB_ENV;
 
