@@ -124,14 +124,13 @@ int main(int argc, char** argv) {
         home = argv[1];
     }
 
-    std::cout << "(sql5300: running with database environment at " << home << ")" << std::endl;
-
     DbEnv env(0U);
     env.set_message_stream(&std::cout);
     env.set_error_stream(&std::cerr);
     try {
         // env.open(home, DB_CREATE | DB_INIT_MPOOL, 0);
         env.open(home.c_str(), DB_CREATE | DB_INIT_MPOOL, 0);
+        std::cout << "(sql5300: running with database environment at " << home << ")" << std::endl;
     } catch (DbException &exc) {
         std::cerr << "(sql5300: " << exc.what() << ")";
         env.close(0);

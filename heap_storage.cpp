@@ -5,21 +5,24 @@
 * Naive Test from Kevin
 */
 bool test_heap_storage() {
-    if(SlottedPage::test_slotted_page_del_sucessAndThrowException() == false) {
-        std::cout << "test_slotted_page_del_sucessAndThrowException FAIL! " << std::endl;
-        return false;
-    }
+    HeapFile file("test");
+    // file.create();
+    file.open();
+    // if(SlottedPage::test_slotted_page_del_sucessAndThrowException() == false) {
+    //     std::cout << "test_slotted_page_del_sucessAndThrowException FAIL! " << std::endl;
+    //     return false;
+    // }
 
-    ColumnNames column_names;
-    column_names.push_back("a");
-    column_names.push_back("b");
-    ColumnAttributes column_attributes;
-    ColumnAttribute ca(ColumnAttribute::INT);
-    column_attributes.push_back(ca);
-    ca.set_data_type(ColumnAttribute::TEXT);
-    column_attributes.push_back(ca);
-    HeapTable table1("_test_create_drop_cpp", column_names, column_attributes);
-    return table1.test_unmarshal();
+    // ColumnNames column_names;
+    // column_names.push_back("a");
+    // column_names.push_back("b");
+    // ColumnAttributes column_attributes;
+    // ColumnAttribute ca(ColumnAttribute::INT);
+    // column_attributes.push_back(ca);
+    // ca.set_data_type(ColumnAttribute::TEXT);
+    // column_attributes.push_back(ca);
+    // HeapTable table1("_test_create_drop_cpp", column_names, column_attributes);
+    // return table1.test_unmarshal();
     // table1.create();
     // std::cout << "create ok" << std::endl;
     // table1.drop();  // drop makes the object unusable because of BerkeleyDB
@@ -428,6 +431,7 @@ void HeapFile::close(void) {
     // how to check if db is closed already?
     // call db.close();
     this->db.close(0);
+    this->closed = true;
 }
 
 // Allocate a new block for the database file.
@@ -488,15 +492,25 @@ BlockIDs* HeapFile::block_ids() {
 // Wrapper for Berkeley DB open, which does both open and creation.
 void HeapFile::db_open(uint flags) {
     // check if closed/exist
-    // initialize db -> DB()
-    // set the record leng (db.set_re_len) as the block_size
-    // set dbfilename = as the path of the _DB_ENV + name + ".db"
-    // set dbtype = DB_RECNO
-    // call db.open(dbfilename, Null, dbtype, flags);
-    // ----- this stuff below is in python, not sure if we need it ----
-    // set stat = db.stat(DB_FAST_STAT)
-    // set last = stat["ndata"]
-    // set closed = False
+    if(this->closed) {
+        db.set_message_stream(_DB_ENV->get_message_stream());
+        db.set_error_stream(_DB_ENV->get_error_stream());
+        // set the record leng (db.set_re_len) as the block_size
+        db.set_re_len(DbBlock::BLOCK_SZ);
+        // set dbfilename = as the path of the _DB_ENV + name + ".db"
+        // const char **homep;
+        // _DB_ENV->get_home(homep);
+        this->dbfilename = this->name + ".db";
+        // set dbtype = DB_RECNO
+        // call db.open(dbfilename, Null, dbtype, flags);
+        //               db.open(NULL, EXAMPLE, NULL, DB_RECNO, DB_CREATE | DB_TRUNCATE, 0644); // Erases anything already there
+        int result = db.open(NULL, this->dbfilename.c_str(), NULL, DB_RECNO, flags, 0644);
+        if(result != 0) {
+            this->close();
+        }
+        // set closed = False
+        this->closed = false;
+    }
 }
 
 /* -------------HeapTable::DbRelation-------------*/

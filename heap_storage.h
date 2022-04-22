@@ -19,6 +19,7 @@
 #include "storage_engine.h"
 
 using namespace std;
+extern DbEnv *_DB_ENV;
 
 /**
  * @class SlottedPage - heap file implementation of DbBlock.
