@@ -143,9 +143,9 @@ int main(int argc, char** argv) {
 
     // if input is "quit", terminate the program
     while(true) {
+        std::cout << "SQL> "; // prompt for the next input
         std::getline(std::cin, input);
         if (input == "") {
-            std::cout << "SQL> ";
             continue;
         }
         if (input == EXIT) { // EXIT condition
@@ -159,7 +159,6 @@ int main(int argc, char** argv) {
         }
 
         handleSQLStatement(input);
-        std::cout << "SQL> "; // prompt for the next input
     }
 
     return EXIT_SUCCESS;
