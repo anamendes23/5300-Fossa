@@ -400,43 +400,34 @@ bool SlottedPage::test_slotted_page_del_sucessAndThrowException() {
 // public
 // create the database file that will store the blocks for this relation.
 void HeapFile::create(void) {
-    // This has to be done somewhere else
-    DbEnv env(0U);
-	env.set_message_stream(&std::cout);
-	env.set_error_stream(&std::cerr);
-    try {
-	    env.open(ENV_DIR, DB_CREATE | DB_INIT_MPOOL, 0);
-    } catch (DbException &exc) {
-        std::cerr << "(sql5300: " << exc.what() << ")";
-        env.close(0);
-        exit(1);
-    }
-    _DB_ENV = &env;
-
     // actual implementation
     // call dp_open(); -> use flags similar to example.cpp
+    this->db_open(DB_CREATE | DB_TRUNCATE);
     // get a new block and put it in the file
+    SlottedPage* block = this->get_new();
+    this->put(block);
 }
 
 // delete?
 // Delete the physical file.
 void HeapFile::drop(void) {
-    // open
     // close
+    this->close();
     // in python: os.remove(dbfilename);
+
 }
 
 // open the database file.
 void HeapFile::open(void) {
-    // done somewhere else
-	_DB_ENV->open(ENV_DIR, 0, 0);
     // call dp_open without flags
+    this->db_open();
 }
 
 // close the database file.
 void HeapFile::close(void) {
     // how to check if db is closed already?
     // call db.close();
+    this->db.close(0);
 }
 
 // Allocate a new block for the database file.
@@ -480,6 +471,8 @@ SlottedPage* HeapFile::get(BlockID block_id){
  */
 void HeapFile::put(DbBlock *block) {
     //db.put(block id, data in bytes)
+    Dbt* data = (Dbt *)block->get_data();
+    this->db.put(NULL, block->get_block(), data, 0);
 }
 
 // iterate through all the block ids in the file.
