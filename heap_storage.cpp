@@ -110,19 +110,42 @@ void SlottedPage::put(RecordID record_id, const Dbt &data) {
         if(!has_room(extra_space)) {
             throw new DbBlockNoRoomError("Not enough room in block");
         }
+        // handle loc = 0, when the record had been deleted
+        // get the virtual curr_loc based on record id that comes after that id
+        // loop through all ids
+        if (curr_loc == 0) {
+            for (auto const& id: *ids()) {
+                if (id > record_id) {
+                    u16 temp_size, temp_loc;
+                    get_header(temp_size, temp_loc, id);
+                    if (temp_size > 0) {
+                        curr_loc = temp_loc + temp_size;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // what if all records were deleted? get end_free + 1
+        if (curr_loc == 0) {
+            curr_loc = end_free + 1;
+        }
+
         // slide right to left
-        slide(curr_loc + new_size, curr_loc + curr_size);
+        slide(curr_loc, curr_loc - extra_space);
         // update block
         std::memcpy(this->address(curr_loc - extra_space), data.get_data(), new_size);
+        curr_loc = curr_loc - extra_space;
     }
     else { // new_size is smaller
         // update block
-        std::memcpy(this->address(curr_loc), data.get_data(), new_size);
+        u16 new_loc = curr_loc + curr_size - new_size;
+        std::memcpy(this->address(new_loc), data.get_data(), new_size);
         // slide from left to right
-        slide(curr_loc + new_size, curr_loc + curr_size);
+        slide(curr_loc, curr_loc + (curr_size - new_size));
+        curr_loc = curr_loc + (curr_size - new_size);
     }
-    // slide function updates headers, so grab header info again
-    get_header(curr_size, curr_loc, record_id);
+    // slide function updates headers
     put_header(record_id, new_size, curr_loc);
 }
 
@@ -179,7 +202,7 @@ bool SlottedPage::has_room(u_int16_t size) {
 }
 
 void SlottedPage::slide(u_int16_t start, u_int16_t end) {
-    u16 shift = end - start;
+    int shift = end - start;
 
     if(shift == 0) {
         return;
@@ -188,16 +211,12 @@ void SlottedPage::slide(u_int16_t start, u_int16_t end) {
     // slide records from right to left
     // if shift is positive, we have space left-over
     // slide records from left to right
+    // move_loc is where the last record starts
     u16 move_loc = this->end_free + 1;
-    // TODO Verify this revision
-    // u16 move_size = (start - 1) - move_loc; // legacy code
-    // u16 move_size = (start + 1) - move_loc; // revision
-    u16 move_size = start - this->end_free; // revision
+    u16 move_size = start - move_loc;
     u16 new_loc = move_loc + shift;
     // current records;
     Dbt temp_data(this->address(move_loc), move_size);
-    // TODO Verify this
-    // std::memcpy((void *)new_loc, (void *)move_loc, move_size);
     std::memcpy(this->address(new_loc), this->address(move_loc), move_size);
 
     // update headers
@@ -206,7 +225,7 @@ void SlottedPage::slide(u_int16_t start, u_int16_t end) {
     for (auto const& record_id: *ids()) {
         get_header(size, loc, record_id);
         // for ids loc <= start, we add the shift
-        if(loc <= start) {
+        if(loc != 0 && loc <= start) {
             loc += shift;
             put_header(record_id, size, loc);
         }
@@ -484,8 +503,6 @@ void HeapFile::put(DbBlock *block) {
     BlockID block_id = block->get_block_id();
     Dbt key(&block_id, sizeof(block_id));
     // &key should be the same thing as block->get_block()
-    // Dbt* data = (Dbt *)block->get_data();
-    //db.put(block id, data in bytes)
     this->db.put(NULL, &key, block->get_block(), 0);
 }
 
