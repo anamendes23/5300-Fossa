@@ -5,50 +5,41 @@
 * Naive Test from Kevin
 */
 bool test_heap_storage() {
-    HeapFile file("test");
-    // file.create();
-    file.open();
-    // if(SlottedPage::test_slotted_page_del_sucessAndThrowException() == false) {
-    //     std::cout << "test_slotted_page_del_sucessAndThrowException FAIL! " << std::endl;
-    //     return false;
-    // }
-
-    // ColumnNames column_names;
-    // column_names.push_back("a");
-    // column_names.push_back("b");
-    // ColumnAttributes column_attributes;
-    // ColumnAttribute ca(ColumnAttribute::INT);
-    // column_attributes.push_back(ca);
-    // ca.set_data_type(ColumnAttribute::TEXT);
-    // column_attributes.push_back(ca);
-    // HeapTable table1("_test_create_drop_cpp", column_names, column_attributes);
-    // return table1.test_unmarshal();
-    // table1.create();
-    // std::cout << "create ok" << std::endl;
-    // table1.drop();  // drop makes the object unusable because of BerkeleyDB
-    //                 //restriction -- maybe want to fix this some day
-    // std::cout << "drop ok" << std::endl;
-    // HeapTable table("_test_data_cpp", column_names, column_attributes);
-    // table.create_if_not_exists();
-    // std::cout << "create_if_not_exsts ok" << std::endl;
-    // ValueDict row;
-    // row["a"] = Value(12);
-    // row["b"] = Value("Hello!");
-    // std::cout << "try insert" << std::endl;
-    // table.insert(&row);
-    // std::cout << "insert ok" << std::endl;
-    // Handles* handles = table.select();
-    // std::cout << "select ok " << handles->size() << std::endl;
-    // ValueDict *result = table.project((*handles)[0]);
-    // std::cout << "project ok" << std::endl;
-    // Value value = (*result)["a"];
-    // if (value.n != 12)
-    //     return false;
-    // value = (*result)["b"];
-    // if (value.s != "Hello!")
-    //     return false;
-    // table.drop();
-    // return true;
+    std::cout << "start test" << std::endl;
+    ColumnNames column_names;
+    column_names.push_back("a");
+    column_names.push_back("b");
+    ColumnAttributes column_attributes;
+    ColumnAttribute ca(ColumnAttribute::INT);
+    column_attributes.push_back(ca);
+    ca.set_data_type(ColumnAttribute::TEXT);
+    column_attributes.push_back(ca);
+    HeapTable table1("_test_create_drop_cpp", column_names, column_attributes);
+    table1.create();
+    std::cout << "create ok" << std::endl;
+    table1.drop();  // drop makes the object unusable because of BerkeleyDB restriction -- maybe want to fix this some day
+    std::cout << "drop ok" << std::endl;
+    HeapTable table("_test_data_cpp", column_names, column_attributes);
+    table.create_if_not_exists();
+    std::cout << "create_if_not_exsts ok" << std::endl;
+    ValueDict row;
+    row["a"] = Value(12);
+    row["b"] = Value("Hello!");
+    std::cout << "try insert" << std::endl;
+    table.insert(&row);
+    std::cout << "insert ok" << std::endl;
+    Handles* handles = table.select();
+    std::cout << "select ok " << handles->size() << std::endl;
+    ValueDict *result = table.project((*handles)[0]);
+    std::cout << "project ok" << std::endl;
+    Value value = (*result)["a"];
+    if (value.n != 12)
+        return false;
+    value = (*result)["b"];
+    if (value.s != "Hello!")
+        return false;
+    table.drop();
+    return true;
 }
 
 // copied from instructor's code
@@ -94,7 +85,12 @@ RecordID SlottedPage::add(const Dbt* data) {
 Dbt* SlottedPage::get(RecordID record_id) {
     u16 size = get_n(4 * record_id);
     u16 loc = get_n(4 * record_id + 2);
-    return new Dbt(this->address(loc), size);
+
+    // from Remi
+    char* data = new char[size];
+    memcpy(data, this->address(loc), size);
+
+    return new Dbt(data, size);
 }
 
 /**
@@ -402,6 +398,7 @@ bool SlottedPage::test_slotted_page_del_sucessAndThrowException() {
 /* -------------HeapFile::DbFile-------------*/
 // public
 // create the database file that will store the blocks for this relation.
+// FIXME: BDB1001 illegal record number size
 void HeapFile::create(void) {
     // actual implementation
     // call dp_open(); -> use flags similar to example.cpp
@@ -417,9 +414,12 @@ void HeapFile::drop(void) {
     // close
     this->close();
     // in python: os.remove(dbfilename);
-    int delete_result = std::remove(dbfilename.c_str());
+    const char *HOME = "cpsc5300/data";
+	const char *home = std::getenv("HOME");
+    std::string path = std::string(home) + + "/" + HOME + "/" + dbfilename;
+    int delete_result = std::remove(path.c_str());
     if (delete_result != 0) {
-        throw FailToRemoveDbfile ("failed to remove the physical file, thus drop() failed");
+        throw FailToRemoveDbfile ("failed to remove the physical file " + path);
     }
 
 }
@@ -445,16 +445,17 @@ void HeapFile::close(void) {
  */
 SlottedPage* HeapFile::get_new(void) {
     char block[DbBlock::BLOCK_SZ];
-    std::memset(block, 0, sizeof(block));
-    Dbt data(block, sizeof(block));
+    std::memset(block, 0, DbBlock::BLOCK_SZ);
+    Dbt data(block, DbBlock::BLOCK_SZ);
 
     int block_id = ++this->last;
     Dbt key(&block_id, sizeof(block_id));
-
-    // write out an empty block and read it back in so Berkeley DB is managing the memory
-    SlottedPage* page = new SlottedPage(data, this->last, true);
     this->db.put(nullptr, &key, &data, 0); // write it out with initialization applied
-    this->db.get(nullptr, &key, &data, 0);
+
+    Dbt slottedPageData(block, DbBlock::BLOCK_SZ);
+    this->db.get(nullptr, &key, &slottedPageData, 0);
+    // write out an empty block and read it back in so Berkeley DB is managing the memory
+    SlottedPage* page = new SlottedPage(slottedPageData, this->last, true);
     return page;
 }
 
@@ -466,6 +467,9 @@ SlottedPage* HeapFile::get(BlockID block_id){
     char block[DbBlock::BLOCK_SZ];
     std::memset(block, 0, sizeof(block));
     Dbt data(block, sizeof(block));
+    Dbt key(&block_id, sizeof(block_id));
+    // Dbt data;
+    this->db.get(nullptr, &key, &data, 0);
 
     SlottedPage* page = new SlottedPage(data, block_id, false);
     return page;
@@ -477,12 +481,12 @@ SlottedPage* HeapFile::get(BlockID block_id){
  * actually written out to disk.
  */
 void HeapFile::put(DbBlock *block) {
-    // BlockID block_id = block->get_block_id();
-    // Dbt key(&block_id, sizeof(block_id));
+    BlockID block_id = block->get_block_id();
+    Dbt key(&block_id, sizeof(block_id));
     // &key should be the same thing as block->get_block()
-    Dbt* data = (Dbt *)block->get_data();
+    // Dbt* data = (Dbt *)block->get_data();
     //db.put(block id, data in bytes)
-    this->db.put(NULL, block->get_block(), data, 0);
+    this->db.put(NULL, &key, block->get_block(), 0);
 }
 
 // iterate through all the block ids in the file.
@@ -492,7 +496,7 @@ BlockIDs* HeapFile::block_ids() {
     BlockIDs* block_ids = new BlockIDs;
     // loop through all the block ids and return the vector
     for (int i = 0; i < this->last; i++) {
-        block_ids->push_back(i)
+        block_ids->push_back(i);
     }
     return block_ids;
 }
@@ -553,10 +557,10 @@ void HeapTable::create() {
  */
 void HeapTable::create_if_not_exists() {
     try {
-        file.open();
-    }
-    catch (DbRelationError e) { // bdb.DBNoSuckFileError
         file.create();
+    }
+    catch (DbRelationError e) {
+        file.open();
     }
 }
 
@@ -685,7 +689,7 @@ ValueDict* HeapTable::validate(const ValueDict *row) {
 
 Handle HeapTable::append(const ValueDict *row) {
     // marshals the row into data -> binary representation
-    Dbt *data = HeapTable::marshal(row);
+    Dbt *data = this->marshal(row);
     // find where to put that new data by geting the last block in the file
     SlottedPage *block = file.get(file.get_last_block_id());
     // in try, add data to the block and return the recordID returned
@@ -699,8 +703,9 @@ Handle HeapTable::append(const ValueDict *row) {
     }
     // put the block back in the file
     file.put(block);
+    delete data;
     // return a pair file.last, recordID // u_int32_t, u_int16_t
-    return std::pair<unsigned int, short unsigned int>(file.get_last_block_id(),record_id);
+    return std::pair<BlockID, RecordID>(file.get_last_block_id(),record_id);
 }
 
 // return the bits to go into the file
