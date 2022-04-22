@@ -7,7 +7,7 @@
 bool test_heap_storage() {
     if(SlottedPage::test_slotted_page_del_sucessAndThrowException() == false) {
         std::cout << "test_slotted_page_del_sucessAndThrowException FAIL! " << std::endl;
-        return false;
+        // return false;
     }
 
     ColumnNames column_names;
@@ -20,6 +20,7 @@ bool test_heap_storage() {
     column_attributes.push_back(ca);
     HeapTable table1("_test_create_drop_cpp", column_names, column_attributes);
     return table1.test_unmarshal();
+
     // table1.create();
     // std::cout << "create ok" << std::endl;
     // table1.drop();  // drop makes the object unusable because of BerkeleyDB
@@ -408,12 +409,16 @@ void HeapFile::create(void) {
     this->put(block);
 }
 
-// delete?
+// delete() in python code
 // Delete the physical file.
 void HeapFile::drop(void) {
     // close
     this->close();
     // in python: os.remove(dbfilename);
+    int delete_result = std::remove(dbfilename.c_str());
+    if (delete_result != 0) {
+        throw FailToRemoveDbfile ("failed to remove the physical file, thus drop() failed");
+    }
 
 }
 
@@ -425,9 +430,9 @@ void HeapFile::open(void) {
 
 // close the database file.
 void HeapFile::close(void) {
-    // how to check if db is closed already?
-    // call db.close();
     this->db.close(0);
+    // helpful for checking if the db is closed
+    this->closed = true;
 }
 
 // Allocate a new block for the database file.
@@ -465,13 +470,16 @@ SlottedPage* HeapFile::get(BlockID block_id){
 }
 
 /**
- * write a block to the file. Presumably the client has made modifications in the block that 
+ * write a block to the file. Presumably the client has made modifications in the block that
  * he would like to save. Typically, it's up to the buffer manager exactly when the block is
  * actually written out to disk.
  */
 void HeapFile::put(DbBlock *block) {
-    //db.put(block id, data in bytes)
+    // BlockID block_id = block->get_block_id();
+    // Dbt key(&block_id, sizeof(block_id));
+    // &key should be the same thing as block->get_block()
     Dbt* data = (Dbt *)block->get_data();
+    //db.put(block id, data in bytes)
     this->db.put(NULL, block->get_block(), data, 0);
 }
 
@@ -481,6 +489,9 @@ BlockIDs* HeapFile::block_ids() {
     // BlockID is a u_int32_t type
     BlockIDs* block_ids = new BlockIDs;
     // loop through all the block ids and return the vector
+    for (int i = 0; i < this->last; i++) {
+        block_ids->push_back(i)
+    }
     return block_ids;
 }
 
@@ -497,6 +508,13 @@ void HeapFile::db_open(uint flags) {
     // set stat = db.stat(DB_FAST_STAT)
     // set last = stat["ndata"]
     // set closed = False
+    db.set_message_stream(&std::cout);
+	db.set_error_stream(&std::cerr);
+	db.set_re_len(DbBlock::BLOCK_SZ); // Set record length to 4K
+	if (db.open(nullptr, dbfilename.c_str(), name.c_str(), DB_RECNO, flags, 0644) != 0)
+        this->close();
+
+    closed = false;
 }
 
 /* -------------HeapTable::DbRelation-------------*/
