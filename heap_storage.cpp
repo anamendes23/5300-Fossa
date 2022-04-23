@@ -512,7 +512,7 @@ BlockIDs* HeapFile::block_ids() {
     // BlockID is a u_int32_t type
     BlockIDs* block_ids = new BlockIDs;
     // loop through all the block ids and return the vector
-    for (int i = 1; i <= this->last; i++) {
+    for (u_int32_t i = 1; i <= this->last; i++) {
         block_ids->push_back(i);
     }
     return block_ids;
