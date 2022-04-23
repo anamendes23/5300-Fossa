@@ -562,7 +562,7 @@ void HeapTable::create() {
     try {
         file.create();
     }
-    catch (DbRelationError e) {
+    catch (DbRelationError &e) {
         std::cerr << e.what() << std::endl;
     }
 }
@@ -576,7 +576,7 @@ void HeapTable::create_if_not_exists() {
     try {
         file.create();
     }
-    catch (DbRelationError e) {
+    catch (DbRelationError &e) {
         file.open();
     }
 }
@@ -714,7 +714,7 @@ Handle HeapTable::append(const ValueDict *row) {
     try {
         record_id = block->add(data);
     } // if there's a ValueError exception, block is full, so get new block
-    catch (DbBlockNoRoomError e) {
+    catch (DbBlockNoRoomError &e) {
         block = file.get_new();
         record_id = block->add(data);
     }
