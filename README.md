@@ -53,3 +53,15 @@ Rudimentary storage engine built using a Heap data structure. The heap storage e
 * Engine's bottom layer, stores records in blocks in Slotted Page architecture
 * Utilizes Berkeley DB's buffer manager for handling reading from and writing to the disk
 * Supports add, get, delete, and put data manipulation in blocks functionalities
+
+#### **Testing**
+
+We used [heap_storage_test.cpp](https://github.com/klundeen/5300-Mink/blob/main/heap_storage_test.cpp) test file shared by amazing team Mink to validate our implementation.
+All tests passed, including professor Lundeen's `test_heap_storage()` function.
+
+### **Hand-off**
+
+To assist the next team working on project Fossa, we recorded a walk-through video to show the parts of our code.
+You can find watch the [video here](https://seattleu.instructuremedia.com/embed/62564f66-0f00-4f63-a7c1-cfc6f2666fde).
+
+In addition to the video, the files contain comprehensive documentation.
