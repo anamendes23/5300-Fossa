@@ -62,13 +62,6 @@ public:
 
     virtual RecordIDs *ids(void);
 
-    // our unit tests
-    static bool test_slotted_page();
-    static bool test_slotted_page_addOneChar_sucess();
-    static bool test_slotted_page_addHello_sucess();
-    static bool test_slotted_page_addAndPut_sucess();
-    static bool test_slotted_page_addAndPutThatUsesSlide_sucess();
-    static bool test_slotted_page_del_sucessAndThrowException();
 protected:
     u_int16_t num_records;
     u_int16_t end_free;
