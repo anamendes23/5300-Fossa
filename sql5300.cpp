@@ -26,6 +26,7 @@ DbEnv *_DB_ENV;
 
 /**
  * Parses the query inputed by user.
+ * implementation is close to execute() in other repos
  * @param query to be parsed
  */
 void handleSQLStatement(std::string query);
@@ -91,9 +92,9 @@ std::string getWhereClause(hsql::Expr* whereClause);
  */
 std::string getGroupBy(hsql::GroupByDescription* groupBy);
 
-const char *EXIT = "quit";
+const char *EXIT = "quit"; // command to quit the sql shell program
 const unsigned int BLOCK_SZ = 4096; // block size
-const char *HOME = "cpsc5300/data"; // the db dir
+const char *HOME = "cpsc5300/data"; // the relative db dir
 const char *EXAMPLE = "example.db"; // name of the db
 
 int main(int argc, char** argv) {
@@ -167,7 +168,7 @@ void handleSQLStatement(std::string query) {
         delete result;
         return;
     }
-    // Valid SQL
+    // process Valid SQL, equivalent to execute() in other repos
     for (uint i = 0; i < result->size(); ++i) {
         const hsql::SQLStatement *statement = result->getStatement(i);
         switch(statement->type()) {

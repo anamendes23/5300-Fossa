@@ -58,11 +58,6 @@ SlottedPage::SlottedPage(Dbt &block, BlockID block_id, bool is_new) : DbBlock(bl
     }
 }
 
-/**
- *  adds a new record to the block, assumes that the record itself has been
- * marshaled into the memory at data. Returns an id suitable for fetching
- * it back later with get().
- */
 RecordID SlottedPage::add(const Dbt* data) {
     if (!has_room(data->get_size()))
         throw DbBlockNoRoomError("not enough room for new record");
@@ -77,11 +72,6 @@ RecordID SlottedPage::add(const Dbt* data) {
     return id;
 }
 
-/**
- * get a record's data for a given record id. It will have to
- * be unmarshaled by the client code (since only the client
- * knows how it was marshaled to store it) to expose the individual fields.
- */
 Dbt* SlottedPage::get(RecordID record_id) {
     u16 size = get_n(4 * record_id);
     u16 loc = get_n(4 * record_id + 2);
@@ -93,11 +83,6 @@ Dbt* SlottedPage::get(RecordID record_id) {
     return new Dbt(data, size);
 }
 
-/**
- * like add, but where we already know the record id. Could be used
- * to update the record's data or, for some file organizations, we
- * compute the record id based on the record's fields.
- */
 void SlottedPage::put(RecordID record_id, const Dbt &data) {
     u16 curr_size, curr_loc;
     get_header(curr_size, curr_loc, record_id);
@@ -149,7 +134,6 @@ void SlottedPage::put(RecordID record_id, const Dbt &data) {
     put_header(record_id, new_size, curr_loc);
 }
 
-// remove a record from the block (by record id).
 void SlottedPage::del(RecordID record_id) {
     // similar to put (slide stuff)
     // first check if id exists
@@ -166,7 +150,6 @@ void SlottedPage::del(RecordID record_id) {
     slide(curr_loc, curr_loc + curr_size);
 }
 
-// iterate through all the record ids in this block.
 RecordIDs* SlottedPage::ids(void) {
     RecordIDs *record_ids = new RecordIDs;
     // we know the number of records
@@ -179,14 +162,11 @@ RecordIDs* SlottedPage::ids(void) {
 }
 
 // SlottedPage protected
-// Get the size and offset for given id. For id of zero, it is the block header.
-// The opposite of put
 void SlottedPage::get_header(u_int16_t &size, u_int16_t &loc, RecordID id) {
     size = get_n(4 * id); // 2 bytes
     loc = get_n(4 * id + 2); // 2 bytes
 }
 
-// Store the size and offset for given id. For id of zero, store the block header.
 void SlottedPage::put_header(RecordID id, u16 size, u16 loc) {
     if (id == 0) { // called the put_header() version and using the default params
         size = this->num_records;
@@ -253,8 +233,6 @@ void* SlottedPage::address(u16 offset) {
 
 /* -------------HeapFile::DbFile-------------*/
 // public
-// create the database file that will store the blocks for this relation.
-// FIXME: BDB1001 illegal record number size
 void HeapFile::create(void) {
     // actual implementation
     // call dp_open(); -> use flags similar to example.cpp
@@ -264,8 +242,6 @@ void HeapFile::create(void) {
     this->put(block);
 }
 
-// delete() in python code
-// Delete the physical file.
 void HeapFile::drop(void) {
     // close
     this->close();
@@ -280,25 +256,17 @@ void HeapFile::drop(void) {
 
 }
 
-// open the database file.
 void HeapFile::open(void) {
     // call dp_open without flags
     this->db_open();
 }
 
-// close the database file.
 void HeapFile::close(void) {
     this->db.close(0);
     // helpful for checking if the db is closed
     this->closed = true;
 }
 
-// Allocate a new block for the database file.
-// Returns the new empty DbBlock that is managing the records in this block and its block id.
-/**
- * create a new empty block and add it to the database file.
- * Returns the new block to be modified by the client via the DbBlock interface.
- */
 SlottedPage* HeapFile::get_new(void) {
     char block[DbBlock::BLOCK_SZ];
     std::memset(block, 0, DbBlock::BLOCK_SZ);
@@ -315,10 +283,6 @@ SlottedPage* HeapFile::get_new(void) {
     return page;
 }
 
-/**
- * get a block from the database file (via the buffer manager, presumably) for a given block id.
- * The client code can then read or modify the block via the DbBlock interface.
- */
 SlottedPage* HeapFile::get(BlockID block_id){
     char block[DbBlock::BLOCK_SZ];
     std::memset(block, 0, sizeof(block));
@@ -331,11 +295,6 @@ SlottedPage* HeapFile::get(BlockID block_id){
     return page;
 }
 
-/**
- * write a block to the file. Presumably the client has made modifications in the block that
- * he would like to save. Typically, it's up to the buffer manager exactly when the block is
- * actually written out to disk.
- */
 void HeapFile::put(DbBlock *block) {
     BlockID block_id = block->get_block_id();
     Dbt key(&block_id, sizeof(block_id));
@@ -343,7 +302,6 @@ void HeapFile::put(DbBlock *block) {
     this->db.put(NULL, &key, block->get_block(), 0);
 }
 
-// iterate through all the block ids in the file.
 BlockIDs* HeapFile::block_ids() {
     // BlockIDs is a vector<BlockID>
     // BlockID is a u_int32_t type
@@ -356,7 +314,6 @@ BlockIDs* HeapFile::block_ids() {
 }
 
 // protected
-// Wrapper for Berkeley DB open, which does both open and creation.
 void HeapFile::db_open(uint flags) {
     // check if closed/exist
     if(this->closed) {
@@ -382,19 +339,9 @@ void HeapFile::db_open(uint flags) {
 
 /* -------------HeapTable::DbRelation-------------*/
 // Public
-/**
- * takes the name of the relation, the columns (in order), and all
- * the column attributes (e.g., it's data type, any constraints, is
- * it allowed to be null, etc.) It's not the job of DbRelation to track
- * all this information. That's done by the schema storage.
- */
 HeapTable::HeapTable(Identifier table_name, ColumnNames column_names, ColumnAttributes column_attributes)
     : DbRelation(table_name, column_names, column_attributes), file(table_name) {}
 
-/**
- * corresponds to the SQL command CREATE TABLE. At minimum, it presumably
- * sets up the DbFile and calls its create method.
- */
 void HeapTable::create() {
     try {
         file.create();
@@ -404,11 +351,6 @@ void HeapTable::create() {
     }
 }
 
-/**
- * corresponds to the SQL command CREATE TABLE IF NOT EXISTS. Whereas
- * create will throw an exception if the table already exists, this method
- * will just open the table if it already exists.
- */
 void HeapTable::create_if_not_exists() {
     try {
         file.create();
@@ -418,63 +360,31 @@ void HeapTable::create_if_not_exists() {
     }
 }
 
-/**
- * corresponds to the SQL command DROP TABLE. Deletes the underlying DbFile.
- */
 void HeapTable::drop() {
     file.drop();
 }
 
-/**
- * opens the table for insert, update, delete, select, and project methods
- */
 void HeapTable::open() {
     file.open();
 }
 
-/**
- * closes the table, temporarily disabling insert, update, delete, select, and project methods.
- */
 void HeapTable::close() {
     file.close();
 }
 
-/**
- * corresponds to the SQL command INSERT INTO TABLE. Takes a proposed row and adds
- * it to the table. This is the method that determines the block to write it to
- * and marshals the data and writes it to the block. It is also responsible for
- * handling any constraints, applying defaults, etc.
- * but we'll only handle two data types for now, INTEGER (or INT) and TEXT.
- * We won't handle any other column attributes or any NULL values.
- */
 Handle HeapTable::insert(const ValueDict *row) {
     this->open();
     return this->append(this->validate(row));
 }
 
-/**
- * corresponds to the SQL command UPDATE. Like insert, but only applies specific
- * field changes, keeping other fields as they were before. Same logic as insert
- * for constraints, defaults, etc. The client needs to first obtain a handle to
- * the row that is meant to be updated either from insert or from select.
- */
 void HeapTable::update(const Handle handle, const ValueDict *new_values) {
     throw std::logic_error("HeapTable::update method not implemented");
 }
 
-/**
- * corresponds to the SQL command DELETE FROM. Deletes a row for a given
- * row handle (obtained from insert or select).
- */
 void HeapTable::del(const Handle handle) {
     throw std::logic_error("HeapTable::del method not implemented");
 }
 
-/**
- * corresponds to the SQL query SELECT * FROM...WHERE. Returns handles to the matching rows.
- * For select we'll ignore any WHERE or GROUP BY or LIMIT criteria. We will support the project method.
- * We won't yet support update or delete.
- */
 Handles* HeapTable::select() {
     Handles* handles = new Handles();
     BlockIDs* block_ids = file.block_ids();
@@ -494,9 +404,6 @@ Handles* HeapTable::select(const ValueDict* where) {
     throw std::logic_error("HeapTable::select method with where clause not implemented");
 }
 
-/**
- * extracts specific fields from a row handle (a projection).
- */
 ValueDict* HeapTable::project(Handle handle) {
     // get recordID and blockID from handle
     BlockID block_id = handle.first;
@@ -562,8 +469,6 @@ Handle HeapTable::append(const ValueDict *row) {
     return std::pair<BlockID, RecordID>(file.get_last_block_id(),record_id);
 }
 
-// return the bits to go into the file
-// caller responsible for freeing the returned Dbt and its enclosed ret->get_data().
 Dbt* HeapTable::marshal(const ValueDict* row) {
     char *bytes = new char[DbBlock::BLOCK_SZ]; // more than we need (we insist that one row fits into DbBlock::BLOCK_SZ)
     uint offset = 0;
