@@ -1,22 +1,55 @@
 # 5300-Fossa
 
-Build:
+## Sprint Verano
+
+The goal for Spring Verano was to build a skeleton for our Relation Manager project.
+We started by building a SQL shell in Milestone 1, which simply reads a SQL statement, parses it, and prints it back to the user or indicates if it is not a valid query.
+In Milestone 2, we implemented a rudimentary Storage Engine using a Heap data structure. More details in the sections below.
+
+Team: Ana Mendes, Fangsheng Xu
+
+### **Set up**
+
+#### **Build:**
 - Update the INCLUDE and LIBRARY variables in the Makefile to match the locations of Berkley DB and SQLParser
-- Run `make` to compile the solution
+- Run `$ make` to compile the solution
 
-Usage: `./sql5300 [PATH]/data`
+#### **Usage:**
+After compiling, run the following command to start the SQL shell:
+`$ ./sql5300 [PATH]/data`
+To test the storage engine, use the `test` command:
+`$ SQL> test`
+To exit the SQL shell, use the `quit` command:
+`$ SQL> quit`
 
-## Milestone 1
+### **Milestone 1**
 
-SQL shell that runs on an instance of a Berkley DB environment.
+SQL shell that runs on an instance of a Berkley DB environment and parses SQL statements input by user.
 
-### Features
+#### **Features**
 * Supports CREATE statement
 * Supports SELECT statements with:
 <br />&nbsp;- Multiple FROM tables
 <br />&nbsp;- JOIN clauses
 <br />&nbsp;- WHERE clauses
 
-### Team
-- Ana Mendes
-- Fangsheng Xu
+
+### **Milestone 2**
+
+Rudimentary storage engine built using a Heap data structure. The heap storage engine is composed of SlottedPage, HeapFile, and HeapTable components.
+
+#### **Features**
+
+#### Heap Table:
+* Engine's top layer, represents the logical view of a Database table
+* Supports create, create if not exists, drop, insert, update, delete, select, and project functionalities
+
+#### Heap File:
+* Engine's middle layer, which handles a collection of blocks
+* Supports create, open, close, and delete database functionalities
+* Supports get, get new, put, and block_ids block manipulation functionalities
+
+#### Slotted Page:
+* Engine's bottom layer, stores records in blocks in Slotted Page architecture
+* Utilizes Berkeley DB's buffer manager for handling reading from and writing to the disk
+* Supports add, get, delete, and put data manipulation in blocks functionalities
