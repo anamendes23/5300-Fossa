@@ -40,12 +40,20 @@ bool test_heap_storage() {
     ValueDict *result = table.project((*handles)[0]);
     std::cout << "project ok" << std::endl;
     Value value = (*result)["a"];
-    if (value.n != 12)
+    if (value.n != 12) {
+        // delete handles;
+        // delete result;
         return false;
+    }
     value = (*result)["b"];
-    if (value.s != "Hello!")
+    if (value.s != "Hello!") {
+        // delete handles;
+        // delete result;
         return false;
+    }
     table.drop();
+    // delete handles;
+    // delete result;
     return true;
 }
 
@@ -89,8 +97,9 @@ Dbt* SlottedPage::get(RecordID record_id) {
     char* data = new char[size];
     memcpy(data, this->address(loc), size);
     // ----
-
-    return new Dbt(data, size);
+    Dbt *result = new Dbt(data, size);
+    // delete data;
+    return result;
 }
 
 void SlottedPage::put(RecordID record_id, const Dbt &data) {
@@ -258,6 +267,7 @@ void HeapFile::drop(void) {
     _DB_ENV->get_home(homep);
     std::string path = std::string(*homep) + + "/" + dbfilename;
     int delete_result = std::remove(path.c_str());
+    // delete homep;
     if (delete_result != 0) {
         throw FailToRemoveDbfile ("failed to remove the physical file " + path);
     }
@@ -423,6 +433,9 @@ ValueDict* HeapTable::project(Handle handle) {
     Dbt* data = block->get(record_id);
     // unmarshal data to get a row
     ValueDict* row = HeapTable::unmarshal(data);
+    // deallocate memory
+    // delete block;
+    // delete data;
     // return row
     return row;
 }
@@ -438,8 +451,10 @@ ValueDict* HeapTable::project(Handle handle, const ColumnNames *column_names) {
     // and return the value in that column_name
     ValueDict* new_row = new std::map<Identifier, Value>;
     for (auto const& column_name: *column_names) {
-        new_row->insert(std::pair<Identifier, Value>(column_name,row->at(column_name)));
+        new_row->insert(std::make_pair(column_name,row->at(column_name)));
     }
+    // delete row;
+
     return new_row;
 }
 
@@ -503,8 +518,8 @@ Dbt* HeapTable::marshal(const ValueDict* row) {
     }
     char *right_size_bytes = new char[offset];
     memcpy(right_size_bytes, bytes, offset);
-    delete[] bytes;
     Dbt *data = new Dbt(right_size_bytes, offset);
+    delete[] bytes;
     return data;
 }
 
@@ -532,6 +547,7 @@ ValueDict* HeapTable::unmarshal(Dbt *data) {
             throw DbRelationError("Only know how to unmarshal INT and TEXT");
         }
     }
+    // delete[] output_data;
     return row;
 }
 
@@ -542,10 +558,18 @@ bool HeapTable::test_unmarshal() {
     Dbt *data = marshal(&row);
     ValueDict *result = unmarshal(data);
     Value value = (*result)["a"];
-    if (value.n != 12)
+    if (value.n != 12) {
+        // delete data;
+        // delete result;
         return false;
+    }
     value = (*result)["b"];
-    if (value.s != "Hello!")
+    if (value.s != "Hello!") {
+        // delete data;
+        // delete result;
         return false;
+    }
+    // delete data;
+    // delete result;
     return true;
 }
