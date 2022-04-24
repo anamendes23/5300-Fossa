@@ -257,6 +257,8 @@ void HeapFile::create(void) {
     // get a new block and put it in the file
     SlottedPage* block = this->get_new();
     this->put(block);
+
+    delete block;
 }
 
 void HeapFile::drop(void) {
@@ -266,7 +268,7 @@ void HeapFile::drop(void) {
     _DB_ENV->get_home(homep);
     std::string path = std::string(*homep) + + "/" + dbfilename;
     int delete_result = std::remove(path.c_str());
-    // delete homep;
+    delete homep;
     if (delete_result != 0) {
         throw FailToRemoveDbfile ("failed to remove the physical file " + path);
     }
@@ -520,6 +522,7 @@ Dbt* HeapTable::marshal(const ValueDict* row) {
     memcpy(right_size_bytes, bytes, offset);
     Dbt *data = new Dbt(right_size_bytes, offset);
     delete[] bytes;
+    delete[] right_size_bytes;
     return data;
 }
 
